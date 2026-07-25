@@ -7,6 +7,14 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'placehold.co',
       },
+      {
+        protocol: 'https',
+        hostname: '*.backblazeb2.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.s3.*.backblazeb2.com',
+      },
     ],
   },
 };

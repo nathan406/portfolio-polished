@@ -4,13 +4,14 @@ import Link from 'next/link';
 import { ExternalLinkIcon, PlayIcon, ChevronRight } from './icons';
 import type { Project } from '@/lib/types';
 
-function formatDate(dateString: string) {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+function formatTimeframe(project: Project) {
+  if (project.timeframe_start && project.timeframe_end) {
+    return `${project.timeframe_start} — ${project.timeframe_end}`;
+  }
+  if (project.timeframe_start) {
+    return `From ${project.timeframe_start}`;
+  }
+  return '';
 }
 
 export function ProjectDetailClient({
@@ -20,6 +21,7 @@ export function ProjectDetailClient({
   project: Project;
   otherProjects: Project[];
 }) {
+  const timeframe = formatTimeframe(project);
 
   return (
     <div className="min-h-screen bg-bg">
@@ -27,9 +29,19 @@ export function ProjectDetailClient({
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Main Content */}
           <div className="flex-1 min-w-0">
-            {/* Project Image */}
+            {/* Media gallery - video or image */}
             <div className="relative bg-surface rounded-xl overflow-hidden border border-border">
-              {project.project_url ? (
+              {project.video_url ? (
+                <div className="relative" style={{ paddingBottom: '56.25%' }}>
+                  <iframe
+                    src={project.video_url}
+                    title={project.title}
+                    className="absolute inset-0 w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              ) : project.project_url ? (
                 <a
                   href={project.project_url}
                   target="_blank"
@@ -76,9 +88,11 @@ export function ProjectDetailClient({
                     <p className="text-sm font-semibold text-text-primary">
                       Nathan Muyoba
                     </p>
-                    <p className="text-xs text-text-muted">
-                      {formatDate(project.created_at)}
-                    </p>
+                    {timeframe && (
+                      <p className="text-xs text-text-muted">
+                        {timeframe}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -95,21 +109,15 @@ export function ProjectDetailClient({
                       Visit Project
                     </Link>
                   )}
-                  {project.vc_url && (
+                  {project.video_url && (
                     <Link
-                      href={project.vc_url}
+                      href={project.video_url}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 px-4 py-2.5 bg-surface border border-border text-text-secondary text-sm font-medium rounded-full hover:text-accent hover:border-accent/30 transition-all duration-300"
                     >
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                        <line x1="16" y1="13" x2="8" y2="13"/>
-                        <line x1="16" y1="17" x2="8" y2="17"/>
-                        <polyline points="10 9 9 9 8 9"/>
-                      </svg>
-                      View Source
+                      <PlayIcon className="w-4 h-4" />
+                      Watch Video
                     </Link>
                   )}
                 </div>
@@ -157,11 +165,13 @@ export function ProjectDetailClient({
                         {p.title}
                       </h3>
                       <p className="text-xs text-text-muted mt-1.5">
-                        {new Date(p.created_at).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                        })}
+                        {p.timeframe_start && p.timeframe_end
+                          ? `${p.timeframe_start} — ${p.timeframe_end}`
+                          : new Date(p.created_at).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                            })}
                       </p>
                     </div>
                   </Link>

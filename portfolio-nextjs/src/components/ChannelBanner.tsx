@@ -46,10 +46,14 @@ export function ChannelBanner({
   activeTab,
   onTabChange,
   loading = false,
+  subtitle,
+  bio,
 }: {
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
   loading?: boolean;
+  subtitle?: string;
+  bio?: string;
 }) {
   if (loading) {
     return <ChannelBannerLoadingSkeleton />;
@@ -74,10 +78,10 @@ export function ChannelBanner({
               Nathan Muyoba
             </h1>
             <p className="text-text-secondary text-sm sm:text-base mt-1">
-              Fullstack Developer
+              {subtitle || 'Fullstack Developer'}
             </p>
             <p className="text-text-muted text-sm mt-1 max-w-[480px]">
-              Building accessible, performant web applications from scratch.
+              {bio || 'Building accessible, performant web applications from scratch.'}
             </p>
           </div>
         </div>

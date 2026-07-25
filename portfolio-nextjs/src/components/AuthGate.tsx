@@ -18,16 +18,34 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     setChecking(false);
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check env password first (fast)
     if (password === ADMIN_PASSWORD) {
       sessionStorage.setItem('admin_auth', 'true');
       sessionStorage.setItem('admin_key', password);
       setAuthenticated(true);
       setError('');
-    } else {
-      setError('Incorrect password');
+      return;
     }
+
+    // Fall back to checking database password
+    try {
+      const res = await fetch('/api/settings');
+      const settings = await res.json();
+      if (settings.admin_password && password === settings.admin_password) {
+        sessionStorage.setItem('admin_auth', 'true');
+        sessionStorage.setItem('admin_key', password);
+        setAuthenticated(true);
+        setError('');
+        return;
+      }
+    } catch {
+      // If DB is unavailable, use env password only
+    }
+
+    setError('Incorrect password');
   };
 
   if (checking) {
@@ -40,7 +58,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (!authenticated) {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center" style={{ padding: '2.5rem' }}>          <div className="w-full animate-fade-in-up" style={{ maxWidth: '620px' }}>
+      <div className="min-h-screen bg-bg flex items-center justify-center" style={{ padding: '2.5rem' }}>
+        <div className="w-full animate-fade-in-up" style={{ maxWidth: '620px' }}>
           <div className="bg-surface border border-accent-border text-center" style={{ padding: '4rem', borderRadius: '1.5rem' }}>
             {/* Lock icon */}
             <div className="mx-auto bg-accent-dim flex items-center justify-center" style={{ width: '6rem', height: '6rem', borderRadius: '9999px', marginBottom: '2.5rem' }}>
@@ -86,5 +105,31 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+    </>
+  );
+}
+
+export function LogoutButton({ className = '' }: { className?: string }) {
+  const handleLogout = () => {
+    sessionStorage.removeItem('admin_auth');
+    sessionStorage.removeItem('admin_key');
+    window.location.reload();
+  };
+
+  return (
+    <button
+      onClick={handleLogout}
+      className={`inline-flex items-center gap-2 text-sm font-medium transition-all duration-300 hover:scale-[1.02] active:scale-[0.97] ${className}`}
+    >
+      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+        <polyline points="16 17 21 12 16 7"/>
+        <line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+      Logout
+    </button>
+  );
 }
