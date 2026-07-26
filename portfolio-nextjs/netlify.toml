@@ -1,7 +1,16 @@
-# ── Security Headers ─────────────────────────────────────────────────────────
+# ── Next.js Plugin ──────────────────────────────────────────────────────────
+# Explicitly enables the OpenNext adapter since auto-detection doesn't scan
+# subdirectories. Without this, Netlify treats the project as a generic
+# Node.js app and never runs the OpenNext adapter (causing 404s).
 #
-# NOTE: No [build] section here! The build command is set in the Netlify dashboard
-# so that Netlify auto-detects Next.js and uses the OpenNext adapter.
+# Build settings are set in the Netlify dashboard:
+#   Base directory: portfolio-nextjs
+#   Build command:  npm run build
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# ── Security Headers ─────────────────────────────────────────────────────────
 
 [[headers]]
   for = "/*"
@@ -20,14 +29,13 @@
   [headers.values]
     Cache-Control = "public, max-age=86400"
 
-# ── Environment Variables ────────────────────────────────────────────────────
+# ── Environment Variables (set in Netlify dashboard) ─────────────────────────
 #
-# Set these in the Netlify dashboard (Site Settings → Environment Variables):
-#
+# Required:
 #   DATABASE_URL               Neon PostgreSQL connection string
 #   B2_ACCESS_KEY_ID           Backblaze B2 application key ID
 #   B2_SECRET_ACCESS_KEY       Backblaze B2 application key secret
 #   B2_ENDPOINT                Backblaze B2 S3 endpoint URL
-#   B2_REGION                  Backblaze B2 region (e.g., eu-central-003)
+#   B2_REGION                  Backblaze B2 region
 #   B2_BUCKET_NAME             Backblaze B2 bucket name
-#   NEXT_PUBLIC_ADMIN_PASSWORD Admin dashboard password (change from default)
+#   NEXT_PUBLIC_ADMIN_PASSWORD Admin dashboard password
