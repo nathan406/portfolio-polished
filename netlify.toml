@@ -1,6 +1,18 @@
+# ── Build Settings ──────────────────────────────────────────────────────────
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+# ── Next.js Runtime ─────────────────────────────────────────────────────────
+# Explicitly enables the OpenNext adapter. Required because the [build] section
+# signals a custom setup which would otherwise block adapter auto-injection.
+# publish = ".next" avoids the "publish cannot equal base" error.
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
 # ── Security Headers ─────────────────────────────────────────────────────────
-# No [build] section — Netlify auto-detects Next.js from the root and handles
-# the build command and OpenNext adapter injection automatically.
 
 [[headers]]
   for = "/*"
