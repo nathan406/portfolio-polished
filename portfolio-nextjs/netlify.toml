@@ -1,11 +1,17 @@
-# ── Next.js Plugin ──────────────────────────────────────────────────────────
+# ── Build Settings ──────────────────────────────────────────────────────────
+# These settings live in netlify.toml (not the dashboard) to keep everything
+# in one place. Ensure the dashboard has Base/Build/Publish all set to
+# "Not set" to avoid conflicts.
+
+[build]
+  base = "portfolio-nextjs"
+  publish = ".next"
+  command = "npm run build"
+
+# ── Next.js Runtime ─────────────────────────────────────────────────────────
 # Explicitly enables the OpenNext adapter since auto-detection doesn't scan
 # subdirectories. Without this, Netlify treats the project as a generic
-# Node.js app and never runs the OpenNext adapter (causing 404s).
-#
-# Build settings are set in the Netlify dashboard:
-#   Base directory: portfolio-nextjs
-#   Build command:  npm run build
+# static site and routing breaks.
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
