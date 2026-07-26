@@ -1,20 +1,11 @@
 # ── Build Settings ──────────────────────────────────────────────────────────
-# These settings live in netlify.toml (not the dashboard) to keep everything
-# in one place. Ensure the dashboard has Base/Build/Publish all set to
-# "Not set" to avoid conflicts.
+# Netlify auto-detects Next.js when it finds next.config in the base directory.
+# No manual plugin or publish directory needed — the OpenNext adapter is
+# auto-injected by the platform.
 
 [build]
   base = "portfolio-nextjs"
-  publish = ".next"
   command = "npm run build"
-
-# ── Next.js Runtime ─────────────────────────────────────────────────────────
-# Explicitly enables the OpenNext adapter since auto-detection doesn't scan
-# subdirectories. Without this, Netlify treats the project as a generic
-# static site and routing breaks.
-
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
 
 # ── Security Headers ─────────────────────────────────────────────────────────
 
