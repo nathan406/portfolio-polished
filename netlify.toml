@@ -1,10 +1,8 @@
 # ── Build Settings ──────────────────────────────────────────────────────────
-# Netlify auto-detects Next.js when it finds next.config in the base directory.
-# No manual plugin or publish directory needed — the OpenNext adapter is
-# auto-injected by the platform.
+# Next.js project is at the repo root. Netlify auto-detects the framework
+# and injects the OpenNext adapter — no base/publish/plugin config needed.
 
 [build]
-  base = "portfolio-nextjs"
   command = "npm run build"
 
 # ── Security Headers ─────────────────────────────────────────────────────────

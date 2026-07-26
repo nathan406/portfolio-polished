@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
-.freebuff/
+.pnp
+.pnp.*
 
 # Next.js
 .next/
@@ -17,6 +18,9 @@ dist/
 .env.test.local
 .env.production.local
 
+# Allow committing .env.example
+!.env.example
+
 # IDE
 .vscode/
 .idea/
@@ -32,6 +36,7 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.pnpm-debug.log*
 
 # Coverage
 coverage/
@@ -39,3 +44,13 @@ coverage/
 # Misc
 server.log
 nul
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Codebuff
+.freebuff/
+
+# Vercel
+.vercel
