@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import React from 'react';
 import { AuthGate, LogoutButton } from '@/components/AuthGate';
 import type { Project, Technology, SocialLink } from '@/lib/types';
@@ -323,6 +323,192 @@ function SecondaryButton({ children, onClick }: { children: React.ReactNode; onC
   );
 }
 
+/* ── File Upload Component ── */
+
+function FileUpload({ label, accept, value, onChange, maxSize = 10 }: {
+  label: string;
+  accept: string;
+  value: string;
+  onChange: (url: string) => void;
+  maxSize?: number;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const getKey = () => sessionStorage.getItem('admin_key') || '';
+
+  const uploadFile = async (file: File) => {
+    setError(null);
+
+    if (maxSize && file.size > maxSize * 1024 * 1024) {
+      setError(`File too large. Maximum size is ${maxSize}MB.`);
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'x-admin-key': getKey() },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Upload failed' }));
+        throw new Error(err.error || 'Upload failed');
+      }
+
+      const data = await res.json();
+      onChange(data.url);
+    } catch (err: any) {
+      setError(err.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) uploadFile(file);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) uploadFile(file);
+    if (e.target) e.target.value = '';
+  };
+
+  const isImage = accept.includes('image');
+  const isVideo = accept.includes('video');
+  const isPdf = accept.includes('pdf');
+
+  return (
+    <div>
+      <label className="block text-text-muted font-medium" style={{ fontSize: '13px', marginBottom: '10px', letterSpacing: '0.02em' }}>{label}</label>
+
+      {value ? (
+        <div style={{ padding: '20px', background: '#1A1A1A', borderRadius: '1rem', border: '1px solid rgba(220, 38, 38, 0.15)' }}>
+          {isImage && (
+            <div className="relative group">
+              <img src={value} alt="" className="w-full aspect-video object-cover" style={{ borderRadius: '0.75rem' }}
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            </div>
+          )}
+          {isVideo && value && (
+            <div className="relative">
+              <video src={value} controls className="w-full rounded-xl" style={{ maxHeight: '320px' }}>
+                Your browser does not support the video tag.
+              </video>
+            </div>
+          )}
+          {isPdf && (
+            <div className="flex items-center gap-4" style={{ padding: '16px 20px', background: '#141414', borderRadius: '0.75rem', border: '1px solid rgba(30, 30, 30, 0.6)' }}>
+              <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'rgba(220, 38, 38, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-text-primary truncate">Resume PDF</p>
+                <a href={value} target="_blank" rel="noopener noreferrer" className="text-xs text-accent/70 hover:text-accent transition-colors">View file →</a>
+              </div>
+              <button
+                onClick={() => onChange('')}
+                className="p-2 hover:bg-surface-elevated transition-all hover:scale-105"
+                style={{ borderRadius: '8px', border: 'none', cursor: 'pointer', background: 'transparent' }}
+                title="Remove"
+              >
+                <NavIcon type="trash" className="w-4 h-4 text-text-muted" />
+              </button>
+            </div>
+          )}
+          <div className="flex items-center justify-between" style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(30, 30, 30, 0.5)' }}>
+            <span className="text-xs text-text-muted/50 truncate" style={{ maxWidth: '200px' }}>{value.split('/').pop()}</span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="text-xs font-medium text-accent hover:text-accent-hover transition-colors"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px 16px', borderRadius: '8px' }}
+              >
+                Replace
+              </button>
+              <button
+                onClick={() => onChange('')}
+                className="text-xs font-medium text-text-muted/50 hover:text-accent transition-colors"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px 16px', borderRadius: '8px' }}
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+          style={{
+            border: `2px dashed ${dragOver ? 'rgba(220, 38, 38, 0.5)' : 'rgba(30, 30, 30, 0.8)'}`,
+            borderRadius: '1rem',
+            padding: '40px 24px',
+            textAlign: 'center',
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+            background: dragOver ? 'rgba(220, 38, 38, 0.03)' : 'transparent',
+          }}
+          className="hover:border-accent/30 hover:bg-accent/[0.02] group"
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={accept}
+            onChange={handleFileSelect}
+            style={{ display: 'none' }}
+          />
+
+          {uploading ? (
+            <div className="flex flex-col items-center gap-4">
+              <div className="animate-spin" style={{ width: '36px', height: '36px', border: '2px solid #DC2626', borderTopColor: 'transparent', borderRadius: '50%' }} />
+              <span className="text-sm text-text-muted">Uploading...</span>
+            </div>
+          ) : (
+            <>
+              <div style={{ width: '56px', height: '56px', margin: '0 auto 16px', borderRadius: '50%', background: 'rgba(220, 38, 38, 0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="group-hover:bg-accent/10 transition-colors">
+                <svg className="w-6 h-6 text-text-muted/40 group-hover:text-accent/60 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+              </div>
+              <p className="text-sm font-medium text-text-muted group-hover:text-text-primary transition-colors" style={{ marginBottom: '4px' }}>
+                Drop a file here or click to browse
+              </p>
+              <p className="text-xs text-text-muted/40">
+                {isImage ? 'PNG, JPG, WebP, GIF' : isVideo ? 'MP4, WebM' : isPdf ? 'PDF' : 'Any file'} — up to {maxSize}MB
+              </p>
+            </>
+          )}
+        </div>
+      )}
+
+      {error && (
+        <p className="text-xs mt-2" style={{ color: '#fca5a5' }}>{error}</p>
+      )}
+    </div>
+  );
+}
+
 /* ── Section: Projects ── */
 
 function ProjectsSection() {
@@ -390,19 +576,13 @@ function ProjectsSection() {
           <form onSubmit={submit} className="flex flex-col" style={{ gap: '32px' }}>
             <Input label="Project Title *" type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="My Amazing Project" required />
             <TextArea label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Describe your project..." rows={5} />
-            <Input label="Thumbnail URL" type="url" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} placeholder="https://example.com/thumbnail.jpg" />
+            <FileUpload label="Thumbnail Image" accept="image/png,image/jpeg,image/webp,image/gif,.png,.jpg,.jpeg,.webp,.gif" value={form.image_url} onChange={(url) => setForm({ ...form, image_url: url })} />
             <Input label="Project URL" type="url" value={form.project_url} onChange={(e) => setForm({ ...form, project_url: e.target.value })} placeholder="https://myproject.com" />
-            <Input label="Video URL (YouTube embed link)" type="url" value={form.video_url} onChange={(e) => setForm({ ...form, video_url: e.target.value })} placeholder="https://www.youtube.com/embed/..." />
+            <FileUpload label="Project Video (optional)" accept="video/mp4,video/webm,.mp4,.webm" value={form.video_url} onChange={(url) => setForm({ ...form, video_url: url })} />
             <div className="grid grid-cols-2 gap-6">
               <Input label="Timeframe Start" type="text" value={form.timeframe_start} onChange={(e) => setForm({ ...form, timeframe_start: e.target.value })} placeholder="e.g. 2024" />
               <Input label="Timeframe End" type="text" value={form.timeframe_end} onChange={(e) => setForm({ ...form, timeframe_end: e.target.value })} placeholder="e.g. Present" />
             </div>
-            {form.image_url && (
-              <div>
-                <label className="block text-text-muted font-medium" style={{ fontSize: '13px', marginBottom: '10px', letterSpacing: '0.02em' }}>Preview</label>
-                <img src={form.image_url} alt="" className="w-full aspect-video object-cover bg-surface-elevated border border-border" style={{ borderRadius: '1rem' }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-              </div>
-            )}
             <div className="flex items-center gap-4" style={{ paddingTop: '40px', borderTop: '1px solid rgba(30, 30, 30, 0.6)' }}>
               <button type="submit" disabled={saving} style={{
                 flex: 1, padding: '1rem 5rem', borderRadius: '9999px', fontSize: '15px', fontWeight: 700,
@@ -886,8 +1066,7 @@ function ResumeSection() {
 
       <div style={{ padding: '4rem', background: '#141414', border: '1px solid rgba(220, 38, 38, 0.12)', borderRadius: '1.5rem', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)' }} className="space-y-8">
         <h3 className="font-display font-semibold text-text-primary tracking-tight" style={{ fontSize: '20px' }}>Resume Settings</h3>
-        <TextArea label="Resume Intro Text" value={resumeIntro} onChange={(e) => setResumeIntro(e.target.value)} placeholder="Everything about my experience, education, and technical background..." rows={4} />
-        <Input label="Resume PDF URL" type="url" value={resumePdfUrl} onChange={(e) => setResumePdfUrl(e.target.value)} placeholder="https://example.com/resume.pdf" />
+        <TextArea label="Resume Intro Text" value={resumeIntro} onChange={(e) => setResumeIntro(e.target.value)} placeholder="Everything about my experience, education, and technical background..." rows={4} />            <FileUpload label="Resume PDF" accept="application/pdf,.pdf" value={resumePdfUrl} onChange={setResumePdfUrl} />
         <div style={{ marginTop: '24px' }}>
           <PrimaryButton onClick={saveSettings}><NavIcon type="check" className="w-5 h-5" /> Save Settings</PrimaryButton>
         </div>
