@@ -1,0 +1,36 @@
+[build]
+  # The Next.js project is in the portfolio-nextjs/ subdirectory
+  # npm install ensures dependencies are available on a fresh deploy
+  command = "cd portfolio-nextjs && npm install && npm run build"
+  # DO NOT set publish directory — Netlify's OpenNext adapter handles output automatically
+
+# ── Security Headers ─────────────────────────────────────────────────────────
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/favicon.ico"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
+# ── Environment Variables ────────────────────────────────────────────────────
+#
+# Set these in the Netlify dashboard (Site Settings → Environment Variables):
+#
+#   DATABASE_URL               Neon PostgreSQL connection string
+#   B2_ACCESS_KEY_ID           Backblaze B2 application key ID
+#   B2_SECRET_ACCESS_KEY       Backblaze B2 application key secret
+#   B2_ENDPOINT                Backblaze B2 S3 endpoint URL
+#   B2_REGION                  Backblaze B2 region (e.g., eu-central-003)
+#   B2_BUCKET_NAME             Backblaze B2 bucket name
+#   NEXT_PUBLIC_ADMIN_PASSWORD Admin dashboard password (change from default)
