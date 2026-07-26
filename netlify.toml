@@ -1,11 +1,6 @@
-# ── Build Settings ──────────────────────────────────────────────────────────
-# Next.js project is at the repo root. Netlify auto-detects the framework
-# and injects the OpenNext adapter — no base/publish/plugin config needed.
-
-[build]
-  command = "npm run build"
-
 # ── Security Headers ─────────────────────────────────────────────────────────
+# No [build] section — Netlify auto-detects Next.js from the root and handles
+# the build command and OpenNext adapter injection automatically.
 
 [[headers]]
   for = "/*"
