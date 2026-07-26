@@ -1,8 +1,8 @@
 [build]
-  # The Next.js project is in the portfolio-nextjs/ subdirectory
   # npm install ensures dependencies are available on a fresh deploy
-  command = "cd portfolio-nextjs && npm install && npm run build"
+  command = "npm install && npm run build"
   # DO NOT set publish directory — Netlify's OpenNext adapter handles output automatically
+  # Base directory must be set to 'portfolio-nextjs' in the Netlify dashboard
 
 # ── Security Headers ─────────────────────────────────────────────────────────
 
