@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import sql, { initDB } from '@/lib/db';
+import sql from '@/lib/db';
 import { checkAuth } from '@/lib/auth';
 
 export async function GET() {
   try {
-    await initDB();
     const technologies = await sql`
       SELECT * FROM technologies ORDER BY category, name ASC
     `;
@@ -21,7 +20,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    await initDB();
     const body = await request.json();
     const { name, category, icon_slug } = body;
 
@@ -48,7 +46,6 @@ export async function PUT(request: NextRequest) {
   }
 
   try {
-    await initDB();
     const body = await request.json();
     const { id, name, category, icon_slug } = body;
 
@@ -83,7 +80,6 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
-    await initDB();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 

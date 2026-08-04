@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import sql, { initDB } from '@/lib/db';
+import sql from '@/lib/db';
 import { checkAuth } from '@/lib/auth';
 
 export async function GET() {
   try {
-    await initDB();
     const socials = await sql`
       SELECT * FROM social_links ORDER BY sort_order ASC, platform ASC
     `;
@@ -21,7 +20,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    await initDB();
     const body = await request.json();
     const { platform, url, icon_slug } = body;
 
@@ -52,7 +50,6 @@ export async function PUT(request: NextRequest) {
   }
 
   try {
-    await initDB();
     const body = await request.json();
     const { id, platform, url, icon_slug, sort_order } = body;
 
@@ -88,7 +85,6 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
-    await initDB();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 

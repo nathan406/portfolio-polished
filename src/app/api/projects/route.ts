@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import sql, { initDB } from '@/lib/db';
+import sql from '@/lib/db';
 import { checkAuth } from '@/lib/auth';
 
 export async function GET() {
   try {
-    await initDB();
     const projects = await sql`
       SELECT * FROM projects ORDER BY created_at DESC
     `;

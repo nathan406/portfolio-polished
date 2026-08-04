@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import sql, { initDB } from '@/lib/db';
+import sql from '@/lib/db';
 import { checkAuth } from '@/lib/auth';
 
 export async function GET() {
   try {
-    await initDB();
     const experience = await sql`
       SELECT * FROM resume_experience ORDER BY sort_order ASC, created_at DESC
     `;
@@ -26,7 +25,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    await initDB();
     const body = await request.json();
     const { title, company, description, year_start, year_end, type } = body;
 
@@ -65,7 +63,6 @@ export async function PUT(request: NextRequest) {
   }
 
   try {
-    await initDB();
     const body = await request.json();
     const { id, title, company, description, year_start, year_end, type, sort_order } = body;
 
@@ -114,7 +111,6 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
-    await initDB();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const type = searchParams.get('type');

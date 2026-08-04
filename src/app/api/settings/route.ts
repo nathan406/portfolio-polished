@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import sql, { initDB } from '@/lib/db';
+import sql from '@/lib/db';
 import { checkAuth } from '@/lib/auth';
 
 const DEFAULT_SETTINGS = {
@@ -22,7 +22,6 @@ const DEFAULT_SETTINGS = {
 
 export async function GET() {
   try {
-    await initDB();
     const result = await sql`
       SELECT * FROM site_settings WHERE key = 'site_settings' LIMIT 1
     `;
@@ -42,7 +41,6 @@ export async function PUT(request: NextRequest) {
   }
 
   try {
-    await initDB();
     const body = await request.json();
     const value = {
       bio: body.bio || DEFAULT_SETTINGS.bio,
