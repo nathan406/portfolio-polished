@@ -210,28 +210,40 @@ function Message({ msg, onClose }: { msg: { type: 'success' | 'error'; text: str
   );
 }
 
-function Input({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
+function Input({ label, error, ...props }: { label: string; error?: string } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <div>
       <label className="block text-text-muted font-medium" style={{ fontSize: '13px', marginBottom: '10px', letterSpacing: '0.02em' }}>{label}</label>
       <input
         {...props}
-        style={{ padding: '1.25rem 1.75rem', fontSize: '15px', borderRadius: '1rem' }}
-        className="w-full bg-bg border border-border hover:border-text-muted/30 focus:border-accent text-text-primary placeholder-text-muted/40 focus:outline-none transition-all duration-200"
+        style={{ padding: '1.25rem 1.75rem', fontSize: '15px', borderRadius: '1rem', colorScheme: 'dark' }}
+        className={`w-full bg-bg border text-text-primary placeholder-text-muted/40 focus:outline-none transition-all duration-200 ${error ? 'border-red-500/70' : 'border-border hover:border-text-muted/30 focus:border-accent'}`}
       />
+      {error && (
+        <p className="text-xs mt-2 flex items-center gap-1.5 animate-fade-in" style={{ color: '#fca5a5' }}>
+          <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          {error}
+        </p>
+      )}
     </div>
   );
 }
 
-function TextArea({ label, ...props }: { label?: string } & React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+function TextArea({ label, error, ...props }: { label?: string; error?: string } & React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
     <div>
       {label && <label className="block text-text-muted font-medium" style={{ fontSize: '13px', marginBottom: '10px', letterSpacing: '0.02em' }}>{label}</label>}
       <textarea
         {...props}
         style={{ padding: '1.25rem 1.75rem', fontSize: '15px', borderRadius: '1rem' }}
-        className="w-full bg-bg border border-border hover:border-text-muted/30 focus:border-accent text-text-primary placeholder-text-muted/40 focus:outline-none transition-all duration-200 resize-none"
+        className={`w-full bg-bg border text-text-primary placeholder-text-muted/40 focus:outline-none transition-all duration-200 resize-none ${error ? 'border-red-500/70' : 'border-border hover:border-text-muted/30 focus:border-accent'}`}
       />
+      {error && (
+        <p className="text-xs mt-2 flex items-center gap-1.5 animate-fade-in" style={{ color: '#fca5a5' }}>
+          <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -265,6 +277,23 @@ function SectionHeader({ title, subtitle, action }: { title: string; subtitle?: 
       {action}
     </div>
   );
+}
+
+/* ── Timeframe helpers ── */
+
+// Normalizes legacy timeframe strings ("2024", "2024-06") into a value a
+// date input can display. Returns '' for non-date values (e.g. "Present").
+function toDateValue(v: string): string {
+  if (!v) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  if (/^\d{4}-\d{2}$/.test(v)) return v + '-01';
+  if (/^\d{4}$/.test(v)) return v + '-01-01';
+  return '';
+}
+
+// True when a timeframe_end value means "no end date" (e.g. "Present").
+function isOngoingValue(v: string): boolean {
+  return !!v && /^(present|ongoing|current)$/i.test(v.trim());
 }
 
 function PrimaryButton({ children, onClick, disabled }: { children: React.ReactNode; onClick?: () => void; disabled?: boolean }) {
@@ -519,6 +548,8 @@ function ProjectsSection() {
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [form, setForm] = useState({ title: '', description: '', image_url: '', project_url: '', video_url: '', timeframe_start: '', timeframe_end: '' });
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [ongoing, setOngoing] = useState(false);
 
   const load = useCallback(async () => {
     try { const r = await fetch('/api/projects'); const d = await r.json(); setProjects(Array.isArray(d) ? d : []); }
@@ -528,18 +559,25 @@ function ProjectsSection() {
 
   useEffect(() => { load(); }, [load]);
 
-  const reset = () => { setForm({ title: '', description: '', image_url: '', project_url: '', video_url: '', timeframe_start: '', timeframe_end: '' }); setEditing(null); setShowForm(false); };
+  const reset = () => { setForm({ title: '', description: '', image_url: '', project_url: '', video_url: '', timeframe_start: '', timeframe_end: '' }); setErrors({}); setOngoing(false); setEditing(null); setShowForm(false); };
 
   const openEdit = (p: Project) => {
     setForm({ title: p.title, description: p.description, image_url: p.image_url, project_url: p.project_url, video_url: p.video_url, timeframe_start: p.timeframe_start, timeframe_end: p.timeframe_end });
-    setEditing(p); setShowForm(true);
+    setErrors({}); setOngoing(isOngoingValue(p.timeframe_end)); setEditing(p); setShowForm(true);
   };
 
   const getKey = () => sessionStorage.getItem('admin_key') || '';
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title.trim()) { setMsg({ type: 'error', text: 'Title is required' }); return; }
+    const newErrors: Record<string, string> = {};
+    if (!form.title.trim()) newErrors.title = 'Project title is required';
+    if (form.project_url.trim() && !/^https?:\/\//i.test(form.project_url.trim())) newErrors.project_url = 'Enter a valid URL starting with http:// or https://';
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      setMsg({ type: 'error', text: 'Please fix the required field(s) highlighted below.' });
+      return;
+    }
     setSaving(true);
     try {
       const method = editing ? 'PUT' : 'POST';
@@ -573,15 +611,26 @@ function ProjectsSection() {
 
       {showForm && (
         <Modal title={editing ? 'Edit Project' : 'New Project'} onClose={reset}>
-          <form onSubmit={submit} className="flex flex-col" style={{ gap: '32px' }}>
-            <Input label="Project Title *" type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="My Amazing Project" required />
+          <form onSubmit={submit} noValidate className="flex flex-col" style={{ gap: '32px' }}>
+            <Input label="Project Title *" type="text" value={form.title} error={errors.title} onChange={(e) => { setForm({ ...form, title: e.target.value }); if (errors.title) setErrors({ ...errors, title: '' }); }} placeholder="My Amazing Project" required />
             <TextArea label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Describe your project..." rows={5} />
             <FileUpload label="Thumbnail Image" accept="image/png,image/jpeg,image/webp,image/gif,.png,.jpg,.jpeg,.webp,.gif" value={form.image_url} onChange={(url) => setForm({ ...form, image_url: url })} />
-            <Input label="Project URL" type="url" value={form.project_url} onChange={(e) => setForm({ ...form, project_url: e.target.value })} placeholder="https://myproject.com" />
+            <Input label="Project URL" type="url" value={form.project_url} error={errors.project_url} onChange={(e) => { setForm({ ...form, project_url: e.target.value }); if (errors.project_url) setErrors({ ...errors, project_url: '' }); }} placeholder="https://myproject.com" />
             <FileUpload label="Project Video (optional)" accept="video/mp4,video/webm,.mp4,.webm" value={form.video_url} onChange={(url) => setForm({ ...form, video_url: url })} />
             <div className="grid grid-cols-2 gap-6">
-              <Input label="Timeframe Start" type="text" value={form.timeframe_start} onChange={(e) => setForm({ ...form, timeframe_start: e.target.value })} placeholder="e.g. 2024" />
-              <Input label="Timeframe End" type="text" value={form.timeframe_end} onChange={(e) => setForm({ ...form, timeframe_end: e.target.value })} placeholder="e.g. Present" />
+              <Input label="Start Date" type="date" value={toDateValue(form.timeframe_start)} onChange={(e) => setForm({ ...form, timeframe_start: e.target.value })} />
+              <div>
+                <Input label={ongoing ? 'End Date — Present' : 'End Date'} type="date" value={ongoing ? '' : toDateValue(form.timeframe_end)} disabled={ongoing} onChange={(e) => setForm({ ...form, timeframe_end: e.target.value })} />
+                <label className="flex items-center gap-2.5 mt-3 cursor-pointer select-none transition-colors duration-200" style={{ fontSize: '13px', color: ongoing ? '#fca5a5' : 'rgba(113, 113, 122, 0.8)' }}>
+                  <input
+                    type="checkbox"
+                    checked={ongoing}
+                    onChange={(e) => { setOngoing(e.target.checked); setForm({ ...form, timeframe_end: e.target.checked ? 'Present' : '' }); }}
+                    className="w-4 h-4 accent-[#DC2626] cursor-pointer"
+                  />
+                  Currently ongoing (shows “Present”)
+                </label>
+              </div>
             </div>
             <div className="flex items-center gap-4" style={{ paddingTop: '40px', borderTop: '1px solid rgba(30, 30, 30, 0.6)' }}>
               <button type="submit" disabled={saving} style={{
@@ -758,6 +807,7 @@ function TechnologiesSection() {
   const [editing, setEditing] = useState<Technology | null>(null);
   const [form, setForm] = useState({ name: '', category: '', icon_slug: '' });
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     try { const r = await fetch('/api/technologies'); const d = await r.json(); setTechs(Array.isArray(d) ? d : []); } catch { }
@@ -766,11 +816,17 @@ function TechnologiesSection() {
   useEffect(() => { load(); }, [load]);
 
   const getKey = () => sessionStorage.getItem('admin_key') || '';
-  const reset = () => { setForm({ name: '', category: '', icon_slug: '' }); setEditing(null); setShowForm(false); };
+  const reset = () => { setForm({ name: '', category: '', icon_slug: '' }); setErrors({}); setEditing(null); setShowForm(false); };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim()) { setMsg({ type: 'error', text: 'Name is required' }); return; }
+    const newErrors: Record<string, string> = {};
+    if (!form.name.trim()) newErrors.name = 'Name is required';
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      setMsg({ type: 'error', text: 'Please fill in the required field(s).' });
+      return;
+    }
     setSaving(true);
     try {
       const method = editing ? 'PUT' : 'POST';
@@ -800,8 +856,8 @@ function TechnologiesSection() {
 
       {showForm && (
         <Modal title={editing ? 'Edit Technology' : 'New Technology'} onClose={reset}>
-          <form onSubmit={submit} className="flex flex-col" style={{ gap: '32px' }}>
-            <Input label="Name *" type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="React" required />
+          <form onSubmit={submit} noValidate className="flex flex-col" style={{ gap: '32px' }}>
+            <Input label="Name *" type="text" value={form.name} error={errors.name} onChange={(e) => { setForm({ ...form, name: e.target.value }); if (errors.name) setErrors({ ...errors, name: '' }); }} placeholder="React" required />
             <Input label="Category" type="text" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="Frontend, Backend, Tools..." />
             <Input label="Icon Slug (simpleicons.org)" type="text" value={form.icon_slug} onChange={(e) => setForm({ ...form, icon_slug: e.target.value })} placeholder="e.g. react, nextdotjs, typescript" />
             {form.icon_slug && (
@@ -865,7 +921,7 @@ function TechnologiesSection() {
                     </div>
                     <p className="font-semibold text-center transition-colors" style={{ fontSize: '14px', color: '#A1A1AA' }}>{t.name}</p>
                     <div className="flex items-center justify-center gap-3 mt-4 opacity-0 group-hover:opacity-100 transition-all duration-200">
-                      <button onClick={() => { setForm({ name: t.name, category: t.category, icon_slug: t.icon_slug }); setEditing(t); setShowForm(true); }} className="p-2 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="edit" className="w-4 h-4 text-text-muted" /></button>
+                      <button onClick={() => { setForm({ name: t.name, category: t.category, icon_slug: t.icon_slug }); setErrors({}); setEditing(t); setShowForm(true); }} className="p-2 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="edit" className="w-4 h-4 text-text-muted" /></button>
                       <button onClick={() => del(t.id)} className="p-2 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="trash" className="w-4 h-4 text-text-muted hover:text-accent" /></button>
                     </div>
                   </div>
@@ -889,6 +945,7 @@ function SocialsSection() {
   const [editing, setEditing] = useState<SocialLink | null>(null);
   const [form, setForm] = useState({ platform: '', url: '', icon_slug: '' });
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     try { const r = await fetch('/api/socials'); const d = await r.json(); setSocials(Array.isArray(d) ? d : []); } catch { }
@@ -897,11 +954,18 @@ function SocialsSection() {
   useEffect(() => { load(); }, [load]);
 
   const getKey = () => sessionStorage.getItem('admin_key') || '';
-  const reset = () => { setForm({ platform: '', url: '', icon_slug: '' }); setEditing(null); setShowForm(false); };
+  const reset = () => { setForm({ platform: '', url: '', icon_slug: '' }); setErrors({}); setEditing(null); setShowForm(false); };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.platform.trim()) { setMsg({ type: 'error', text: 'Platform name is required' }); return; }
+    const newErrors: Record<string, string> = {};
+    if (!form.platform.trim()) newErrors.platform = 'Platform name is required';
+    if (form.url.trim() && !/^https?:\/\//i.test(form.url.trim())) newErrors.url = 'Enter a valid URL starting with http:// or https://';
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      setMsg({ type: 'error', text: 'Please fill in the required field(s).' });
+      return;
+    }
     setSaving(true);
     try {
       const method = editing ? 'PUT' : 'POST';
@@ -929,9 +993,9 @@ function SocialsSection() {
 
       {showForm && (
         <Modal title={editing ? 'Edit Social Link' : 'New Social Link'} onClose={reset}>
-          <form onSubmit={submit} className="flex flex-col" style={{ gap: '32px' }}>
-            <Input label="Platform Name *" type="text" value={form.platform} onChange={(e) => setForm({ ...form, platform: e.target.value })} placeholder="GitHub, LinkedIn, Twitter..." required />
-            <Input label="Profile URL" type="url" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} placeholder="https://github.com/username" />
+          <form onSubmit={submit} noValidate className="flex flex-col" style={{ gap: '32px' }}>
+            <Input label="Platform Name *" type="text" value={form.platform} error={errors.platform} onChange={(e) => { setForm({ ...form, platform: e.target.value }); if (errors.platform) setErrors({ ...errors, platform: '' }); }} placeholder="GitHub, LinkedIn, Twitter..." required />
+            <Input label="Profile URL" type="url" value={form.url} error={errors.url} onChange={(e) => { setForm({ ...form, url: e.target.value }); if (errors.url) setErrors({ ...errors, url: '' }); }} placeholder="https://github.com/username" />
             <Input label="Icon Slug" type="text" value={form.icon_slug} onChange={(e) => setForm({ ...form, icon_slug: e.target.value })} placeholder="e.g. github, linkedin, x" />
             {form.icon_slug && (
               <div className="flex items-center gap-5" style={{ padding: '20px', background: '#1A1A1A', borderRadius: '1rem', border: '1px solid #1E1E1E' }}>
@@ -991,7 +1055,7 @@ function SocialsSection() {
                 </div>
               </div>
               <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-all duration-200">
-                <button onClick={() => { setForm({ platform: s.platform, url: s.url, icon_slug: s.icon_slug }); setEditing(s); setShowForm(true); }} className="p-2.5 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }} title="Edit"><NavIcon type="edit" className="w-4 h-4 text-text-muted" /></button>
+                <button onClick={() => { setForm({ platform: s.platform, url: s.url, icon_slug: s.icon_slug }); setErrors({}); setEditing(s); setShowForm(true); }} className="p-2.5 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }} title="Edit"><NavIcon type="edit" className="w-4 h-4 text-text-muted" /></button>
                 <button onClick={() => del(s.id)} className="p-2.5 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }} title="Delete"><NavIcon type="trash" className="w-4 h-4 text-text-muted hover:text-accent" /></button>
               </div>
             </div>
@@ -1014,6 +1078,7 @@ function ResumeSection() {
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ title: '', company: '', description: '', year_start: '', year_end: '', type: 'experience' });
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [resumeIntro, setResumeIntro] = useState('');
   const [resumePdfUrl, setResumePdfUrl] = useState('');
 
@@ -1029,7 +1094,7 @@ function ResumeSection() {
   useEffect(() => { load(); }, [load]);
 
   const getKey = () => sessionStorage.getItem('admin_key') || '';
-  const reset = () => { setForm({ title: '', company: '', description: '', year_start: '', year_end: '', type: 'experience' }); setEditing(null); setShowForm(false); };
+  const reset = () => { setForm({ title: '', company: '', description: '', year_start: '', year_end: '', type: 'experience' }); setErrors({}); setEditing(null); setShowForm(false); };
 
   const saveSettings = async () => {
     try {
@@ -1040,7 +1105,13 @@ function ResumeSection() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title.trim()) { setMsg({ type: 'error', text: 'Title is required' }); return; }
+    const newErrors: Record<string, string> = {};
+    if (!form.title.trim()) newErrors.title = form.type === 'education' ? 'Degree is required' : 'Job title is required';
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      setMsg({ type: 'error', text: 'Please fill in the required field(s).' });
+      return;
+    }
     setSaving(true);
     try {
       const method = editing ? 'PUT' : 'POST';
@@ -1102,7 +1173,7 @@ function ResumeSection() {
                   {e.description && <p className="text-text-muted/70 leading-relaxed" style={{ fontSize: '13px' }}>{e.description}</p>}
                 </div>
                 <div className="flex items-center gap-2 ml-5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-200">
-                  <button onClick={() => { setForm({ title: e.title, company: e.company, description: e.description || '', year_start: e.year_start, year_end: e.year_end, type: 'experience' }); setEditing(e); setShowForm(true); }} className="p-2.5 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="edit" className="w-4 h-4 text-text-muted" /></button>
+                  <button onClick={() => { setForm({ title: e.title, company: e.company, description: e.description || '', year_start: e.year_start, year_end: e.year_end, type: 'experience' }); setErrors({}); setEditing(e); setShowForm(true); }} className="p-2.5 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="edit" className="w-4 h-4 text-text-muted" /></button>
                   <button onClick={() => del(e.id, 'experience')} className="p-2.5 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="trash" className="w-4 h-4 text-text-muted hover:text-accent" /></button>
                 </div>
               </div>
@@ -1140,7 +1211,7 @@ function ResumeSection() {
                   {e.description && <p className="text-text-muted/70 leading-relaxed" style={{ fontSize: '13px' }}>{e.description}</p>}
                 </div>
                 <div className="flex items-center gap-2 ml-5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-200">
-                  <button onClick={() => { setForm({ title: e.degree, company: e.school, description: e.description || '', year_start: e.year_start, year_end: e.year_end, type: 'education' }); setEditing({ ...e, _type: 'education' }); setShowForm(true); }} className="p-2.5 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="edit" className="w-4 h-4 text-text-muted" /></button>
+                  <button onClick={() => { setForm({ title: e.degree, company: e.school, description: e.description || '', year_start: e.year_start, year_end: e.year_end, type: 'education' }); setErrors({}); setEditing({ ...e, _type: 'education' }); setShowForm(true); }} className="p-2.5 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="edit" className="w-4 h-4 text-text-muted" /></button>
                   <button onClick={() => del(e.id, 'education')} className="p-2.5 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="trash" className="w-4 h-4 text-text-muted hover:text-accent" /></button>
                 </div>
               </div>
@@ -1151,8 +1222,8 @@ function ResumeSection() {
 
       {showForm && (
         <Modal title={editing ? 'Edit Entry' : 'New Entry'} onClose={reset}>
-          <form onSubmit={submit} className="flex flex-col" style={{ gap: '32px' }}>
-            <Input label={form.type === 'education' ? 'Degree / Title *' : 'Job Title *'} type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder={form.type === 'education' ? 'B.Sc. Computer Science' : 'Senior Fullstack Developer'} required />
+          <form onSubmit={submit} noValidate className="flex flex-col" style={{ gap: '32px' }}>
+            <Input label={form.type === 'education' ? 'Degree / Title *' : 'Job Title *'} type="text" value={form.title} error={errors.title} onChange={(e) => { setForm({ ...form, title: e.target.value }); if (errors.title) setErrors({ ...errors, title: '' }); }} placeholder={form.type === 'education' ? 'B.Sc. Computer Science' : 'Senior Fullstack Developer'} required />
             <Input label={form.type === 'education' ? 'School / Institution' : 'Company'} type="text" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} placeholder={form.type === 'education' ? 'University of Technology' : 'Tech Corp'} />
             <TextArea label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Describe your role, responsibilities, and achievements..." rows={4} />
             <div className="grid grid-cols-2 gap-6">
@@ -1189,11 +1260,21 @@ function SettingsSection() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const changePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword !== confirmPassword) { setMsg({ type: 'error', text: 'New passwords do not match' }); return; }
-    if (newPassword.length < 6) { setMsg({ type: 'error', text: 'Password must be at least 6 characters' }); return; }
+    const newErrors: Record<string, string> = {};
+    if (!currentPassword.trim()) newErrors.currentPassword = 'Current password is required';
+    if (!newPassword.trim()) newErrors.newPassword = 'New password is required';
+    else if (newPassword.length < 6) newErrors.newPassword = 'Password must be at least 6 characters';
+    if (!confirmPassword.trim()) newErrors.confirmPassword = 'Please confirm your new password';
+    else if (newPassword !== confirmPassword) newErrors.confirmPassword = 'New passwords do not match';
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      setMsg({ type: 'error', text: 'Please fix the fields highlighted below.' });
+      return;
+    }
     setSaving(true);
     try {
       const r = await fetch('/api/auth', {
@@ -1204,7 +1285,7 @@ function SettingsSection() {
       if (!r.ok) throw new Error((await r.json()).error || 'Failed');
       setMsg({ type: 'success', text: 'Password updated! The change takes effect immediately for this session.' });
       sessionStorage.setItem('admin_key', newPassword);
-      setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
+      setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); setErrors({});
     } catch (err: any) { setMsg({ type: 'error', text: err.message }); }
     finally { setSaving(false); }
   };
@@ -1227,10 +1308,10 @@ function SettingsSection() {
             <p className="text-text-muted" style={{ fontSize: '13px', marginTop: '4px' }}>Update your admin dashboard password</p>
           </div>
         </div>
-        <form onSubmit={changePassword} className="space-y-10" style={{ maxWidth: '480px' }}>
-          <Input label="Current Password" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Enter your current password" required />
-          <Input label="New Password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Enter a new password (min. 6 characters)" required minLength={6} />
-          <Input label="Confirm New Password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm your new password" required />
+        <form onSubmit={changePassword} noValidate className="space-y-10" style={{ maxWidth: '480px' }}>
+          <Input label="Current Password" type="password" value={currentPassword} error={errors.currentPassword} onChange={(e) => { setCurrentPassword(e.target.value); if (errors.currentPassword) setErrors({ ...errors, currentPassword: '' }); }} placeholder="Enter your current password" required />
+          <Input label="New Password" type="password" value={newPassword} error={errors.newPassword} onChange={(e) => { setNewPassword(e.target.value); if (errors.newPassword) setErrors({ ...errors, newPassword: '' }); }} placeholder="Enter a new password (min. 6 characters)" required minLength={6} />
+          <Input label="Confirm New Password" type="password" value={confirmPassword} error={errors.confirmPassword} onChange={(e) => { setConfirmPassword(e.target.value); if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: '' }); }} placeholder="Confirm your new password" required />
           <div style={{ paddingTop: '40px' }}>
             <button type="submit" disabled={saving} style={{
               display: 'inline-flex',

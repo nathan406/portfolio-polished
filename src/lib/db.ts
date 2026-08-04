@@ -113,6 +113,45 @@ export async function runMigration(): Promise<boolean> {
       );
     `;
 
+    // ── Upgrade existing tables ─────────────────────────────────────────────
+    // CREATE TABLE IF NOT EXISTS skips tables that already exist, so older
+    // databases may be missing columns the current code expects. Add every
+    // column with ADD COLUMN IF NOT EXISTS to bring old schemas up to date.
+    await sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS video_url TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS timeframe_start TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS timeframe_end TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS image_url TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS project_url TEXT NOT NULL DEFAULT ''`;
+
+    await sql`ALTER TABLE project_media ADD COLUMN IF NOT EXISTS url TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE project_media ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'image'`;
+    await sql`ALTER TABLE project_media ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0`;
+
+    await sql`ALTER TABLE technologies ADD COLUMN IF NOT EXISTS name TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE technologies ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE technologies ADD COLUMN IF NOT EXISTS icon_slug TEXT NOT NULL DEFAULT ''`;
+
+    await sql`ALTER TABLE social_links ADD COLUMN IF NOT EXISTS platform TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE social_links ADD COLUMN IF NOT EXISTS url TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE social_links ADD COLUMN IF NOT EXISTS icon_slug TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE social_links ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0`;
+
+    await sql`ALTER TABLE resume_experience ADD COLUMN IF NOT EXISTS company TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE resume_experience ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE resume_experience ADD COLUMN IF NOT EXISTS year_start TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE resume_experience ADD COLUMN IF NOT EXISTS year_end TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE resume_experience ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0`;
+
+    await sql`ALTER TABLE resume_education ADD COLUMN IF NOT EXISTS school TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE resume_education ADD COLUMN IF NOT EXISTS description TEXT DEFAULT ''`;
+    await sql`ALTER TABLE resume_education ADD COLUMN IF NOT EXISTS year_start TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE resume_education ADD COLUMN IF NOT EXISTS year_end TEXT NOT NULL DEFAULT ''`;
+
+    await sql`ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS key TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS value JSONB NOT NULL DEFAULT '{}'`;
+    await sql`ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()`;
+
     return true;
   } catch (error) {
     console.error('Migration failed:', error);
