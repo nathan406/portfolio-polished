@@ -63,6 +63,23 @@ export function ProjectCard({ project }: { project: Project }) {
               <span>{timeframe}</span>
             </div>
           )}
+          {project.technologies && project.technologies.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {project.technologies.slice(0, 4).map((t) => (
+                <span
+                  key={t.id}
+                  className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20"
+                >
+                  {t.name}
+                </span>
+              ))}
+              {project.technologies.length > 4 && (
+                <span className="text-[10px] text-text-muted px-1 py-0.5">
+                  +{project.technologies.length - 4}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </Link>

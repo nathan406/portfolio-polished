@@ -105,6 +105,16 @@ export async function runMigration(): Promise<boolean> {
     `;
 
     await sql`
+      CREATE TABLE IF NOT EXISTS project_technologies (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+        technology_id UUID REFERENCES technologies(id) ON DELETE CASCADE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        UNIQUE (project_id, technology_id)
+      );
+    `;
+
+    await sql`
       CREATE TABLE IF NOT EXISTS site_settings (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         key TEXT UNIQUE NOT NULL,

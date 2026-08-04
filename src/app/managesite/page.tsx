@@ -550,20 +550,37 @@ function ProjectsSection() {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [ongoing, setOngoing] = useState(false);
+  const [allTechs, setAllTechs] = useState<Technology[]>([]);
+  const [selectedTechIds, setSelectedTechIds] = useState<string[]>([]);
+  const [newTechs, setNewTechs] = useState<{ name: string; category: string }[]>([]);
+  const [newTechName, setNewTechName] = useState('');
 
   const load = useCallback(async () => {
-    try { const r = await fetch('/api/projects'); const d = await r.json(); setProjects(Array.isArray(d) ? d : []); }
+    try {
+      const [pr, tr] = await Promise.all([fetch('/api/projects'), fetch('/api/technologies')]);
+      const d = await pr.json(); setProjects(Array.isArray(d) ? d : []);
+      const t = await tr.json(); setAllTechs(Array.isArray(t) ? t : []);
+    }
     catch { setMsg({ type: 'error', text: 'Failed to load projects' }); }
     finally { setLoading(false); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
-  const reset = () => { setForm({ title: '', description: '', image_url: '', project_url: '', video_url: '', timeframe_start: '', timeframe_end: '' }); setErrors({}); setOngoing(false); setEditing(null); setShowForm(false); };
+  const reset = () => { setForm({ title: '', description: '', image_url: '', project_url: '', video_url: '', timeframe_start: '', timeframe_end: '' }); setErrors({}); setOngoing(false); setSelectedTechIds([]); setNewTechs([]); setNewTechName(''); setEditing(null); setShowForm(false); };
+
+  const addNewTech = () => {
+    const name = newTechName.trim();
+    if (!name) return;
+    const exists = [...newTechs.map(t => t.name), ...allTechs.map(t => t.name)]
+      .some(n => n.toLowerCase() === name.toLowerCase());
+    if (!exists) setNewTechs([...newTechs, { name, category: '' }]);
+    setNewTechName('');
+  };
 
   const openEdit = (p: Project) => {
     setForm({ title: p.title, description: p.description, image_url: p.image_url, project_url: p.project_url, video_url: p.video_url, timeframe_start: p.timeframe_start, timeframe_end: p.timeframe_end });
-    setErrors({}); setOngoing(isOngoingValue(p.timeframe_end)); setEditing(p); setShowForm(true);
+    setErrors({}); setOngoing(isOngoingValue(p.timeframe_end)); setSelectedTechIds((p.technologies || []).map(t => t.id)); setNewTechs([]); setNewTechName(''); setEditing(p); setShowForm(true);
   };
 
   const getKey = () => sessionStorage.getItem('admin_key') || '';
@@ -581,7 +598,12 @@ function ProjectsSection() {
     setSaving(true);
     try {
       const method = editing ? 'PUT' : 'POST';
-      const body = editing ? { ...form, id: editing.id } : form;
+      const body = {
+        ...form,
+        ...(editing ? { id: editing.id } : {}),
+        technology_ids: selectedTechIds,
+        new_technologies: newTechName.trim() ? [...newTechs, { name: newTechName.trim(), category: '' }] : newTechs,
+      };
       const r = await fetch('/api/projects', { method, headers: { 'Content-Type': 'application/json', 'x-admin-key': getKey() }, body: JSON.stringify(body) });
       if (!r.ok) throw new Error((await r.json()).error || 'Failed');
       setMsg({ type: 'success', text: editing ? 'Project updated!' : 'Project created!' });
@@ -617,6 +639,79 @@ function ProjectsSection() {
             <FileUpload label="Thumbnail Image" accept="image/png,image/jpeg,image/webp,image/gif,.png,.jpg,.jpeg,.webp,.gif" value={form.image_url} onChange={(url) => setForm({ ...form, image_url: url })} />
             <Input label="Project URL" type="url" value={form.project_url} error={errors.project_url} onChange={(e) => { setForm({ ...form, project_url: e.target.value }); if (errors.project_url) setErrors({ ...errors, project_url: '' }); }} placeholder="https://myproject.com" />
             <FileUpload label="Project Video (optional)" accept="video/mp4,video/webm,.mp4,.webm" value={form.video_url} onChange={(url) => setForm({ ...form, video_url: url })} />
+
+            {/* Technologies Used */}
+            <div>
+              <label className="block text-text-muted font-medium" style={{ fontSize: '13px', marginBottom: '12px', letterSpacing: '0.02em' }}>Technologies Used</label>
+
+              {allTechs.length > 0 && (
+                <div className="flex flex-wrap gap-2" style={{ marginBottom: '16px' }}>
+                  {allTechs.map(t => {
+                    const selected = selectedTechIds.includes(t.id);
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setSelectedTechIds(selected ? selectedTechIds.filter(id => id !== t.id) : [...selectedTechIds, t.id])}
+                        style={{
+                          padding: '10px 18px', borderRadius: '9999px', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          border: `1px solid ${selected ? 'rgba(220, 38, 38, 0.45)' : '#1E1E1E'}`,
+                          background: selected ? 'rgba(220, 38, 38, 0.12)' : '#0A0A0A',
+                          color: selected ? '#fca5a5' : 'rgba(113, 113, 122, 0.8)',
+                        }}
+                        className={selected ? '' : 'hover:border-text-muted/40 hover:text-text-primary'}
+                      >
+                        {selected ? `${t.name} ✕` : t.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {newTechs.length > 0 && (
+                <div className="flex flex-wrap gap-2" style={{ marginBottom: '16px' }}>
+                  {newTechs.map((nt, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setNewTechs(newTechs.filter((_, j) => j !== i))}
+                      style={{ padding: '10px 18px', borderRadius: '9999px', fontSize: '13px', fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s ease', border: '1px dashed rgba(220, 38, 38, 0.5)', background: 'rgba(220, 38, 38, 0.08)', color: '#fca5a5' }}
+                    >
+                      + {nt.name} ✕
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  value={newTechName}
+                  onChange={(e) => setNewTechName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addNewTech(); } }}
+                  placeholder={allTechs.length === 0 ? 'Add a technology (e.g. React)' : 'Or add a new technology...'}
+                  style={{ flex: 1, padding: '14px 20px', fontSize: '14px', borderRadius: '1rem', background: '#0A0A0A', border: '1px solid #1E1E1E', color: '#F0EDE8', outline: 'none' }}
+                  className="hover:border-text-muted/30 focus:border-accent transition-all duration-200"
+                />
+                <button
+                  type="button"
+                  onClick={addNewTech}
+                  disabled={!newTechName.trim()}
+                  style={{
+                    padding: '14px 24px', borderRadius: '9999px', fontSize: '13px', fontWeight: 600,
+                    cursor: newTechName.trim() ? 'pointer' : 'not-allowed',
+                    background: newTechName.trim() ? 'linear-gradient(135deg, #DC2626, #EF4444)' : '#1A1A1A',
+                    color: newTechName.trim() ? '#0A0A0A' : 'rgba(113, 113, 122, 0.5)',
+                    border: 'none', transition: 'all 0.2s ease',
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+              <p className="text-xs text-text-muted/50" style={{ marginTop: '10px' }}>Click existing technologies to toggle, or add new ones — they'll be saved with the project.</p>
+            </div>
+
             <div className="grid grid-cols-2 gap-6">
               <Input label="Start Date" type="date" value={toDateValue(form.timeframe_start)} onChange={(e) => setForm({ ...form, timeframe_start: e.target.value })} />
               <div>

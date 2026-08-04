@@ -8,6 +8,7 @@ export interface Project {
   timeframe_start: string;
   timeframe_end: string;
   created_at: string;
+  technologies?: Technology[];
 }
 
 export interface ProjectMedia {

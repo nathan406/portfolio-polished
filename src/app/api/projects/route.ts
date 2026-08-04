@@ -14,11 +14,21 @@ export async function GET() {
         SELECT * FROM project_media WHERE project_id = ANY(${projectIds}::uuid[])
         ORDER BY sort_order ASC
       `;
-      // Attach media to each project
+      const techs = await sql`
+        SELECT pt.project_id, t.id, t.name, t.category, t.icon_slug
+        FROM project_technologies pt
+        JOIN technologies t ON t.id = pt.technology_id
+        WHERE pt.project_id = ANY(${projectIds}::uuid[])
+        ORDER BY t.name ASC
+      `;
+      // Attach media and technologies to each project
       return NextResponse.json(
         projects.map((p: any) => ({
           ...p,
           media: media.filter((m: any) => m.project_id === p.id),
+          technologies: techs
+            .filter((t: any) => t.project_id === p.id)
+            .map(({ project_id, ...tech }: any) => tech),
         }))
       );
     }
@@ -62,6 +72,34 @@ export async function POST(request: NextRequest) {
           VALUES (${project.id}, ${item.url || ''}, ${item.type || 'image'}, ${i})
         `;
       }
+    }
+
+    // Link technologies (existing ids + any created inline)
+    const techIds: string[] = [...new Set<string>((body.technology_ids as string[]) || [])];
+    if (Array.isArray(body.new_technologies)) {
+      for (const nt of body.new_technologies) {
+        if (!nt || !nt.name || !nt.name.trim()) continue;
+        const existing = await sql`
+          SELECT id FROM technologies WHERE LOWER(name) = LOWER(${nt.name.trim()}) LIMIT 1
+        `;
+        if (existing.length > 0) {
+          techIds.push(existing[0].id);
+          continue;
+        }
+        const created = await sql`
+          INSERT INTO technologies (name, category, icon_slug)
+          VALUES (${nt.name.trim()}, ${nt.category || ''}, ${nt.icon_slug || ''})
+          RETURNING id
+        `;
+        techIds.push(created[0].id);
+      }
+    }
+    for (const tid of techIds) {
+      await sql`
+        INSERT INTO project_technologies (project_id, technology_id)
+        VALUES (${project.id}, ${tid})
+        ON CONFLICT (project_id, technology_id) DO NOTHING
+      `;
     }
 
     return NextResponse.json(project, { status: 201 });
@@ -113,6 +151,30 @@ export async function PUT(request: NextRequest) {
         await sql`
           INSERT INTO project_media (project_id, url, type, sort_order)
           VALUES (${id}, ${item.url || ''}, ${item.type || 'image'}, ${i})
+        `;
+      }
+    }
+
+    // Replace technologies if provided (existing ids + any created inline)
+    if (body.technology_ids || body.new_technologies) {
+      await sql`DELETE FROM project_technologies WHERE project_id = ${id}`;
+      const techIds: string[] = [...new Set<string>((body.technology_ids as string[]) || [])];
+      if (Array.isArray(body.new_technologies)) {
+        for (const nt of body.new_technologies) {
+          if (!nt || !nt.name || !nt.name.trim()) continue;
+          const created = await sql`
+            INSERT INTO technologies (name, category, icon_slug)
+            VALUES (${nt.name.trim()}, ${nt.category || ''}, ${nt.icon_slug || ''})
+            RETURNING id
+          `;
+          techIds.push(created[0].id);
+        }
+      }
+      for (const tid of techIds) {
+        await sql`
+          INSERT INTO project_technologies (project_id, technology_id)
+          VALUES (${id}, ${tid})
+          ON CONFLICT (project_id, technology_id) DO NOTHING
         `;
       }
     }

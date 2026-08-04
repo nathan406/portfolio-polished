@@ -129,6 +129,25 @@ export function ProjectDetailClient({
                   {project.description || 'No description provided.'}
                 </p>
               </div>
+
+              {/* Technologies */}
+              {project.technologies && project.technologies.length > 0 && (
+                <div className="mt-6">
+                  <p className="text-xs font-medium text-text-muted mb-3" style={{ letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                    Built with
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {project.technologies.map((t) => (
+                      <span
+                        key={t.id}
+                        className="text-xs font-medium px-3.5 py-1.5 rounded-full bg-surface border border-border text-text-secondary"
+                      >
+                        {t.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
