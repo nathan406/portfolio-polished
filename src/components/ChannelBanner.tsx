@@ -14,7 +14,7 @@ function ShimmerBlock({ className, style }: { className: string; style?: React.C
 function ChannelBannerLoadingSkeleton() {
   return (
     <section className="animate-fade-in" style={{ paddingTop: 'clamp(80px, 10vh, 120px)' }}>
-      <div className="w-full mx-auto" style={{ paddingLeft: '5%', paddingRight: '5%', maxWidth: '1000px' }}>
+      <div className="w-full mx-auto" style={{ paddingLeft: '5%', paddingRight: '5%', maxWidth: '1240px' }}>
         {/* Minimal hero skeleton */}
         <div className="flex items-center gap-6">
           <ShimmerBlock className="w-16 h-16 rounded-full bg-[#1A1A1A] flex-shrink-0" />
@@ -48,12 +48,14 @@ export function ChannelBanner({
   loading = false,
   subtitle,
   bio,
+  profileImageUrl = '',
 }: {
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
   loading?: boolean;
   subtitle?: string;
   bio?: string;
+  profileImageUrl?: string;
 }) {
   if (loading) {
     return <ChannelBannerLoadingSkeleton />;
@@ -61,15 +63,21 @@ export function ChannelBanner({
 
   return (
     <section className="animate-fade-in" style={{ paddingTop: 'clamp(80px, 10vh, 120px)' }}>
-      <div className="w-full mx-auto" style={{ paddingLeft: '5%', paddingRight: '5%', maxWidth: '1000px' }}>
+      <div className="w-full mx-auto" style={{ paddingLeft: '5%', paddingRight: '5%', maxWidth: '1240px' }}>
         {/* Minimal hero */}
         <div className="flex items-center gap-6">
           {/* Small profile image — like a signature stamp */}
           <div className="w-16 h-16 rounded-full bg-accent flex-shrink-0 overflow-hidden shadow-lg ring-2 ring-accent/20">
             <img
-              src="https://placehold.co/64x64/DC2626/0A0A0A?text=N"
+              src={profileImageUrl || 'https://placehold.co/64x64/DC2626/0A0A0A?text=N'}
               alt="Nathan Muyoba"
               className="w-full h-full object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                if (target.src !== 'https://placehold.co/64x64/DC2626/0A0A0A?text=N') {
+                  target.src = 'https://placehold.co/64x64/DC2626/0A0A0A?text=N';
+                }
+              }}
             />
           </div>
 

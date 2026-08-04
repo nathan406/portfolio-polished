@@ -18,6 +18,7 @@ const DEFAULT_SETTINGS = {
   ],
   resume_intro: 'Everything about my experience, education, and technical background in one document. I\'m always open to a conversation about interesting work.',
   resume_pdf_url: '',
+  profile_image_url: '',
 };
 
 export async function GET() {
@@ -26,7 +27,8 @@ export async function GET() {
       SELECT * FROM site_settings WHERE key = 'site_settings' LIMIT 1
     `;
     if (result.length > 0) {
-      return NextResponse.json({ ...DEFAULT_SETTINGS, ...result[0].value as any });
+      const value = (result[0] as { value?: Record<string, unknown> })?.value || {};
+      return NextResponse.json({ ...DEFAULT_SETTINGS, ...value });
     }
     return NextResponse.json(DEFAULT_SETTINGS);
   } catch (error) {
@@ -49,14 +51,14 @@ export async function PUT(request: NextRequest) {
       stats: body.stats || DEFAULT_SETTINGS.stats,
       resume_intro: body.resume_intro || DEFAULT_SETTINGS.resume_intro,
       resume_pdf_url: body.resume_pdf_url || '',
+      profile_image_url: body.profile_image_url || '',
     };
 
-    const result = await sql`
+    await sql`
       INSERT INTO site_settings (key, value)
       VALUES ('site_settings', ${JSON.stringify(value)}::jsonb)
       ON CONFLICT (key)
       DO UPDATE SET value = ${JSON.stringify(value)}::jsonb, updated_at = NOW()
-      RETURNING *
     `;
 
     return NextResponse.json(value);

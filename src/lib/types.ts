@@ -62,6 +62,7 @@ export interface SiteSettings {
   id: string;
   bio: string;
   subtitle: string;
+  profile_image_url: string;
   about_paragraphs: string[];
   stats: StatItem[];
   resume_intro: string;

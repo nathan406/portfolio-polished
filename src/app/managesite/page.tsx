@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import React from 'react';
 import { AuthGate, LogoutButton } from '@/components/AuthGate';
+import { DatePicker } from '@/components/DatePicker';
 import type { Project, Technology, SocialLink } from '@/lib/types';
 
 /* ── Types ── */
@@ -712,10 +713,10 @@ function ProjectsSection() {
               <p className="text-xs text-text-muted/50" style={{ marginTop: '10px' }}>Click existing technologies to toggle, or add new ones — they'll be saved with the project.</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-6">
-              <Input label="Start Date" type="date" value={toDateValue(form.timeframe_start)} onChange={(e) => setForm({ ...form, timeframe_start: e.target.value })} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <DatePicker label="Start Date" value={toDateValue(form.timeframe_start)} onChange={(v) => setForm({ ...form, timeframe_start: v })} />
               <div>
-                <Input label={ongoing ? 'End Date — Present' : 'End Date'} type="date" value={ongoing ? '' : toDateValue(form.timeframe_end)} disabled={ongoing} onChange={(e) => setForm({ ...form, timeframe_end: e.target.value })} />
+                <DatePicker label={ongoing ? 'End Date — Present' : 'End Date'} value={ongoing ? '' : toDateValue(form.timeframe_end)} disabled={ongoing} onChange={(v) => setForm({ ...form, timeframe_end: v })} />
                 <label className="flex items-center gap-2.5 mt-3 cursor-pointer select-none transition-colors duration-200" style={{ fontSize: '13px', color: ongoing ? '#fca5a5' : 'rgba(113, 113, 122, 0.8)' }}>
                   <input
                     type="checkbox"
@@ -811,12 +812,14 @@ function AboutSection() {
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [bio, setBio] = useState('');
   const [subtitle, setSubtitle] = useState('');
+  const [profileImageUrl, setProfileImageUrl] = useState('');
   const [paragraphs, setParagraphs] = useState<string[]>(['', '', '']);
   const [stats, setStats] = useState<{ value: string; label: string }[]>([{ value: '', label: '' }]);
 
   useEffect(() => {
     fetch('/api/settings').then(r => r.json()).then(d => {
       setSettings(d); setBio(d.bio || ''); setSubtitle(d.subtitle || 'Fullstack Developer');
+      setProfileImageUrl(d.profile_image_url || '');
       setParagraphs(d.about_paragraphs?.length ? d.about_paragraphs : ['', '', '']);
       setStats(d.stats?.length ? d.stats : [{ value: '3+', label: 'Years building' }]);
       setLoading(false);
@@ -828,7 +831,7 @@ function AboutSection() {
   const save = async () => {
     setSaving(true);
     try {
-      const r = await fetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'x-admin-key': getKey() }, body: JSON.stringify({ ...settings, bio, subtitle, about_paragraphs: paragraphs.filter(p => p.trim()), stats: stats.filter(s => s.value && s.label) }) });
+      const r = await fetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'x-admin-key': getKey() }, body: JSON.stringify({ ...settings, bio, subtitle, profile_image_url: profileImageUrl, about_paragraphs: paragraphs.filter(p => p.trim()), stats: stats.filter(s => s.value && s.label) }) });
       if (!r.ok) throw new Error('Failed');
       setMsg({ type: 'success', text: 'About section saved!' });
     } catch { setMsg({ type: 'error', text: 'Failed to save' }); }
@@ -841,13 +844,14 @@ function AboutSection() {
     <div>
       <SectionHeader
         title="About Section"
-        subtitle="Edit your bio, subtitle, about paragraphs, and stats"
+        subtitle="Edit your profile image, bio, subtitle, about paragraphs, and stats"
         action={<PrimaryButton onClick={save} disabled={saving}><NavIcon type="check" className="w-5 h-5" /> {saving ? 'Saving...' : 'Save Changes'}</PrimaryButton>}
       />
 
       <Message msg={msg} onClose={() => setMsg(null)} />
 
       <div style={{ padding: '4rem', background: '#141414', border: '1px solid rgba(220, 38, 38, 0.12)', borderRadius: '1.5rem', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)' }} className="space-y-10">
+        <FileUpload label="Profile Image (shown next to your name across the site)" accept="image/png,image/jpeg,image/webp,image/gif,.png,.jpg,.jpeg,.webp,.gif" value={profileImageUrl} onChange={setProfileImageUrl} />
         <Input label="Subtitle" type="text" value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder="Fullstack Developer" />
         <Input label="Bio (shown below your name on the homepage)" type="text" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Building accessible, performant web applications from scratch." />
 

@@ -18,7 +18,7 @@ function Shimmer({ className }: { className: string }) {
 
 function GridSkeleton() {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-10">
       {[1, 2, 3, 4, 5, 6].map((i) => (
         <div key={i} className="animate-fade-in" style={{ animationDelay: `${i * 0.06}s` }}>
           <Shimmer className="aspect-video bg-surface rounded-xl mb-4" />
@@ -177,11 +177,12 @@ export default function Home() {
         loading={loading}
         subtitle={settings?.subtitle}
         bio={settings?.bio}
+        profileImageUrl={settings?.profile_image_url}
       />
 
       <section
         style={{
-          maxWidth: '1000px',
+          maxWidth: '1240px',
           marginLeft: 'auto',
           marginRight: 'auto',
           paddingTop: 'clamp(80px, 10vh, 120px)',

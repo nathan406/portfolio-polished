@@ -19,11 +19,11 @@ export function ProjectCard({ project }: { project: Project }) {
   return (
     <Link href={`/project/${project.id}`} className="group block">
       {/* Thumbnail */}
-      <div className="relative overflow-hidden rounded-xl bg-surface-elevated mb-3">
+      <div className="relative overflow-hidden rounded-xl bg-surface-elevated mb-4 aspect-video">
         <img
           src={thumbnailSrc}
           alt={project.title}
-          className="video-thumbnail transition-all duration-300 group-hover:scale-105"
+          className="absolute inset-0 w-full h-full object-cover transition-all duration-300 group-hover:scale-105"
           loading="lazy"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
@@ -42,46 +42,18 @@ export function ProjectCard({ project }: { project: Project }) {
         )}
       </div>
 
-      {/* Info row */}
-      <div className="flex gap-3">
-        {/* Avatar */}
-        <div className="w-9 h-9 rounded-full bg-accent-dim flex-shrink-0 flex items-center justify-center text-xs font-bold text-accent mt-0.5 border border-accent/20">
-          N
-        </div>
+      {/* Title */}
+      <h3 className="font-display text-base sm:text-[17px] font-semibold text-text-primary line-clamp-2 leading-snug group-hover:text-accent transition-colors duration-300 pr-1">
+        {project.title}
+      </h3>
 
-        {/* Text */}
-        <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-semibold text-text-primary line-clamp-2 leading-5 mb-1 group-hover:text-accent transition-colors">
-            {project.title}
-          </h3>
-          <p className="text-xs text-text-muted">
-            Nathan Muyoba
-          </p>
-          {timeframe && (
-            <div className="flex items-center gap-1 text-xs text-text-muted mt-0.5">
-              <ClockIcon className="w-3 h-3" />
-              <span>{timeframe}</span>
-            </div>
-          )}
-          {project.technologies && project.technologies.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {project.technologies.slice(0, 4).map((t) => (
-                <span
-                  key={t.id}
-                  className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20"
-                >
-                  {t.name}
-                </span>
-              ))}
-              {project.technologies.length > 4 && (
-                <span className="text-[10px] text-text-muted px-1 py-0.5">
-                  +{project.technologies.length - 4}
-                </span>
-              )}
-            </div>
-          )}
+      {/* Duration */}
+      {timeframe && (
+        <div className="flex items-center gap-1.5 text-sm text-text-muted mt-2 group-hover:text-text-secondary transition-colors duration-300">
+          <ClockIcon className="w-3.5 h-3.5 flex-shrink-0" />
+          <span>{timeframe}</span>
         </div>
-      </div>
+      )}
     </Link>
   );
 }

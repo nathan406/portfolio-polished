@@ -12,7 +12,7 @@ export function ProjectGrid({ projects, compact = false }: { projects: Project[]
   }
 
   return (
-    <div className={`grid gap-5 ${compact ? 'grid-cols-1 sm:grid-cols-2 gap-3' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}>
+    <div className={`grid gap-x-6 gap-y-10 ${compact ? 'grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-5' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
       {projects.map((project, index) => (
         <div
           key={project.id}
