@@ -24,6 +24,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ url, fileName });
   } catch (error) {
     console.error('Upload error:', error);
-    return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
+    // Include a masked hint of which B2 key this deployment is using, so a
+    // mismatched environment variable is easy to spot (never expose the secret).
+    const keyId = process.env.B2_ACCESS_KEY_ID || '';
+    const suffix = keyId.length >= 4 ? keyId.slice(-4) : '';
+    const hint = suffix ? ` — the B2 key on this deployment ends in "${suffix}"` : '';
+    return NextResponse.json({ error: `Upload failed${hint}` }, { status: 500 });
   }
 }
