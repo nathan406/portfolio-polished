@@ -1587,7 +1587,19 @@ function SettingsSection() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [saving, setSaving] = useState(false);
+  const [migrating, setMigrating] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const runMigration = async () => {
+    setMigrating(true);
+    try {
+      const r = await fetch('/api/migrate', { method: 'POST', headers: { 'x-admin-key': sessionStorage.getItem('admin_key') || '' } });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'Migration failed');
+      setMsg({ type: 'success', text: d.message || 'Database migration completed!' });
+    } catch (err: any) { setMsg({ type: 'error', text: err.message }); }
+    finally { setMigrating(false); }
+  };
 
   const changePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1662,6 +1674,48 @@ function SettingsSection() {
             </button>
           </div>
         </form>
+      </div>
+
+      {/* Database Setup */}
+      <div style={{ padding: '4rem', background: '#141414', border: '1px solid rgba(220, 38, 38, 0.12)', borderRadius: '1.5rem', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)' }}>
+        <div className="flex items-center gap-5" style={{ marginBottom: '28px' }}>
+          <div style={{ padding: '16px', borderRadius: '1rem', background: 'rgba(220, 38, 38, 0.08)', border: '1px solid rgba(220, 38, 38, 0.2)' }}>
+            <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+            </svg>
+          </div>
+          <div>
+            <h3 className="font-display font-semibold text-text-primary tracking-tight" style={{ fontSize: '20px' }}>Database Setup</h3>
+            <p className="text-text-muted" style={{ fontSize: '13px', marginTop: '4px' }}>Create or update all database tables</p>
+          </div>
+        </div>
+        <p className="text-text-muted" style={{ fontSize: '13px', lineHeight: '1.8', maxWidth: '560px', marginBottom: '32px' }}>
+          Run this once after deploying a new version to make sure all tables (projects, technologies, skills, socials, resume, etc.) exist in your database. It is safe to run multiple times.
+        </p>
+        <button
+          type="button"
+          onClick={runMigration}
+          disabled={migrating}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '12px',
+            padding: '1rem 3rem',
+            borderRadius: '9999px',
+            fontSize: '14px',
+            fontWeight: 700,
+            background: migrating ? 'linear-gradient(135deg, rgba(220, 38, 38, 0.5), rgba(239, 68, 68, 0.5))' : 'linear-gradient(135deg, #DC2626, #EF4444)',
+            color: '#0A0A0A',
+            border: 'none',
+            cursor: migrating ? 'not-allowed' : 'pointer',
+            boxShadow: migrating ? 'none' : '0 8px 32px rgba(220, 38, 38, 0.25)',
+            transition: 'all 0.3s ease',
+          }}
+          onMouseEnter={(e) => { if (!migrating) { e.currentTarget.style.background = 'linear-gradient(135deg, #EF4444, #DC2626)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(220, 38, 38, 0.35)'; }}}
+          onMouseLeave={(e) => { if (!migrating) { e.currentTarget.style.background = 'linear-gradient(135deg, #DC2626, #EF4444)'; e.currentTarget.style.boxShadow = '0 8px 32px rgba(220, 38, 38, 0.25)'; }}}
+        >
+          {migrating ? 'Running migration...' : 'Run Database Migration'}
+        </button>
       </div>
     </div>
   );
