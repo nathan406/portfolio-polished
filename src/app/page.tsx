@@ -138,7 +138,7 @@ function SectionHeading({ label }: { label: string }) {
 
 /* ── Tech icon helper ── */
 
-function SimpleIcon({ slug, className = "w-5 h-5" }: { slug?: string; className?: string }) {
+function SimpleIcon({ slug, className = "w-5 h-5", label }: { slug?: string; className?: string; label?: string }) {
   if (!slug) return null;
   // simple-icons exports are dynamic, we use a CDN approach for simplicity
   const iconUrl = `https://cdn.simpleicons.org/${slug.toLowerCase()}/DC2626`;
@@ -146,9 +146,20 @@ function SimpleIcon({ slug, className = "w-5 h-5" }: { slug?: string; className?
   return (
     <img
       src={iconUrl}
-      alt={slug}
+      alt={label || slug}
       className={className}
-      onError={(e) => { (e.target as HTMLImageElement).src = iconUrlFallback; }}
+      onError={(e) => {
+        const img = e.target as HTMLImageElement;
+        if (img.src !== iconUrlFallback) {
+          img.src = iconUrlFallback;
+        } else if (label) {
+          // CDN unreachable — swap to a letter avatar so the card is never blank
+          img.style.display = 'none';
+          const wrap = img.parentElement as HTMLElement;
+          const letter = wrap?.querySelector('span');
+          if (letter) (letter as HTMLElement).style.display = 'flex';
+        }
+      }}
       loading="lazy"
     />
   );
@@ -667,17 +678,17 @@ export default function Home() {
                       href={social.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group flex items-center gap-4 px-5 py-4 bg-surface-elevated border border-accent-border rounded-xl hover:border-accent/40 hover:bg-accent-dim transition-all duration-300"
+                      className="group flex items-center gap-4 px-[25px] py-[21px] bg-surface-elevated border border-accent-border rounded-xl hover:border-accent/40 hover:bg-accent-dim transition-all duration-300"
                     >
-                      <SimpleIcon slug={social.icon_slug} className="w-6 h-6 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-semibold text-text-primary group-hover:text-accent transition-colors">
-                          {social.platform}
-                        </p>
-                        <p className="text-xs text-text-muted truncate max-w-[200px]">
-                          {social.url.replace(/^https?:\/\//, '')}
-                        </p>
+                      <div className="flex-shrink-0 relative" style={{ width: '24px', height: '24px' }}>
+                        <SimpleIcon slug={social.icon_slug} className="w-6 h-6" label={social.platform} />
+                        <span className="absolute inset-0 items-center justify-center text-sm font-bold" style={{ display: 'none', color: '#DC2626' }}>
+                          {(social.platform || '?').charAt(0).toUpperCase()}
+                        </span>
                       </div>
+                      <p className="text-sm font-semibold text-text-primary group-hover:text-accent transition-colors">
+                        {social.platform}
+                      </p>
                       <svg className="w-4 h-4 ml-auto text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
                       </svg>
@@ -689,13 +700,13 @@ export default function Home() {
                       href="https://github.com/nathan406"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group flex items-center gap-4 px-5 py-4 bg-surface-elevated border border-accent-border rounded-xl hover:border-accent/40 hover:bg-accent-dim transition-all duration-300"
+                      className="group flex items-center gap-4 px-[25px] py-[21px] bg-surface-elevated border border-accent-border rounded-xl hover:border-accent/40 hover:bg-accent-dim transition-all duration-300"
                     >
-                      <SimpleIcon slug="github" className="w-6 h-6 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-semibold text-text-primary group-hover:text-accent transition-colors">GitHub</p>
-                        <p className="text-xs text-text-muted">github.com/nathan406</p>
+                      <div className="flex-shrink-0 relative" style={{ width: '24px', height: '24px' }}>
+                        <SimpleIcon slug="github" className="w-6 h-6" label="GitHub" />
+                        <span className="absolute inset-0 items-center justify-center text-sm font-bold" style={{ display: 'none', color: '#DC2626' }}>G</span>
                       </div>
+                      <p className="text-sm font-semibold text-text-primary group-hover:text-accent transition-colors">GitHub</p>
                       <svg className="w-4 h-4 ml-auto text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
                       </svg>
@@ -704,13 +715,13 @@ export default function Home() {
                       href="https://linkedin.com/in/nathanmuyoba"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group flex items-center gap-4 px-5 py-4 bg-surface-elevated border border-accent-border rounded-xl hover:border-accent/40 hover:bg-accent-dim transition-all duration-300"
+                      className="group flex items-center gap-4 px-[25px] py-[21px] bg-surface-elevated border border-accent-border rounded-xl hover:border-accent/40 hover:bg-accent-dim transition-all duration-300"
                     >
-                      <SimpleIcon slug="linkedin" className="w-6 h-6 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-semibold text-text-primary group-hover:text-accent transition-colors">LinkedIn</p>
-                        <p className="text-xs text-text-muted">linkedin.com/in/nathanmuyoba</p>
+                      <div className="flex-shrink-0 relative" style={{ width: '24px', height: '24px' }}>
+                        <SimpleIcon slug="linkedin" className="w-6 h-6" label="LinkedIn" />
+                        <span className="absolute inset-0 items-center justify-center text-sm font-bold" style={{ display: 'none', color: '#DC2626' }}>L</span>
                       </div>
+                      <p className="text-sm font-semibold text-text-primary group-hover:text-accent transition-colors">LinkedIn</p>
                       <svg className="w-4 h-4 ml-auto text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
                       </svg>

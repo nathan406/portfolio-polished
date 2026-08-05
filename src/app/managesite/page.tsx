@@ -1461,13 +1461,39 @@ function SocialsSection() {
           <form onSubmit={submit} noValidate className="flex flex-col" style={{ gap: '32px' }}>
             <Input label="Platform Name *" type="text" value={form.platform} error={errors.platform} onChange={(e) => { setForm({ ...form, platform: e.target.value }); if (errors.platform) setErrors({ ...errors, platform: '' }); }} placeholder="GitHub, LinkedIn, Twitter..." required />
             <Input label="Profile URL" type="url" value={form.url} error={errors.url} onChange={(e) => { setForm({ ...form, url: e.target.value }); if (errors.url) setErrors({ ...errors, url: '' }); }} placeholder="https://github.com/username" />
-            <Input label="Icon Slug" type="text" value={form.icon_slug} onChange={(e) => setForm({ ...form, icon_slug: e.target.value })} placeholder="e.g. github, linkedin, x" />
+            <div>
+              <Input label="Icon Slug" type="text" value={form.icon_slug} onChange={(e) => setForm({ ...form, icon_slug: e.target.value })} placeholder="e.g. whatsapp, tiktok, github, linkedin, x" />
+              <p className="text-xs text-text-muted/50" style={{ marginTop: '10px' }}>Common slugs: whatsapp, tiktok, github, linkedin, x, instagram, gmail — find more at simpleicons.org</p>
+            </div>
             {form.icon_slug && (
               <div className="flex items-center gap-5" style={{ padding: '20px', background: '#1A1A1A', borderRadius: '1rem', border: '1px solid #1E1E1E' }}>
-                <img src={`https://cdn.simpleicons.org/${form.icon_slug.toLowerCase()}/DC2626`} alt="" className="w-8 h-8" onError={(e) => { (e.target as HTMLImageElement).src = `https://cdn.simpleicons.org/${form.icon_slug.toLowerCase()}/888`; }} />
+                <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: 'rgba(220, 38, 38, 0.12)', border: '1px solid rgba(220, 38, 38, 0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                  <img
+                    src={`https://cdn.simpleicons.org/${form.icon_slug.toLowerCase()}/DC2626`}
+                    alt=""
+                    className="w-7 h-7"
+                    onError={(e) => {
+                      // CDN unreachable — swap to a letter avatar so the preview is never blank
+                      const img = e.target as HTMLImageElement;
+                      const box = img.parentElement as HTMLElement;
+                      img.style.display = 'none';
+                      const letter = box.querySelector('span');
+                      if (letter) (letter as HTMLElement).style.display = 'block';
+                    }}
+                    onLoad={(e) => {
+                      // A new slug resolved successfully — restore the icon and hide the letter
+                      const img = e.target as HTMLImageElement;
+                      const box = img.parentElement as HTMLElement;
+                      img.style.display = '';
+                      const letter = box.querySelector('span');
+                      if (letter) (letter as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                  <span style={{ display: 'none', fontSize: '18px', fontWeight: 700, color: '#DC2626' }}>{(form.platform || form.icon_slug).charAt(0).toUpperCase()}</span>
+                </div>
                 <div>
                   <p className="font-medium text-text-primary" style={{ fontSize: '15px' }}>{form.platform || form.icon_slug}</p>
-                  <p className="text-sm text-text-muted">simpleicons.org icon preview</p>
+                  <p className="text-sm text-text-muted">simpleicons.org — &ldquo;{form.icon_slug}&rdquo;</p>
                 </div>
               </div>
             )}
@@ -1504,9 +1530,9 @@ function SocialsSection() {
           <PrimaryButton onClick={() => { reset(); setShowForm(true); }}><NavIcon type="plus" className="w-5 h-5" /> Add Your First Link</PrimaryButton>
         </div>
       ) : (
-        <div className="space-y-5">
-          {socials.map(s => (
-            <div key={s.id} className="group flex items-center justify-between transition-all duration-300" style={{ background: '#141414', border: '1px solid rgba(220, 38, 38, 0.1)', borderRadius: '1rem', padding: '24px 32px' }}
+        <div>
+          {socials.map((s, i) => (
+            <div key={s.id} className="group flex items-center justify-between transition-all duration-300" style={{ background: '#141414', border: '1px solid rgba(220, 38, 38, 0.1)', borderRadius: '1rem', padding: '24px 32px', marginBottom: i === socials.length - 1 ? 0 : '2%' }}
               onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.3)'; e.currentTarget.style.background = 'rgba(220, 38, 38, 0.02)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.1)'; e.currentTarget.style.background = '#141414'; }}
             >
