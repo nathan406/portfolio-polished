@@ -1635,7 +1635,7 @@ function SettingsSection() {
 
       <Message msg={msg} onClose={() => setMsg(null)} />
 
-      <div style={{ padding: '4rem', background: '#141414', border: '1px solid rgba(220, 38, 38, 0.12)', borderRadius: '1.5rem', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)' }}>
+      <div style={{ padding: '4rem', background: '#141414', border: '1px solid rgba(220, 38, 38, 0.12)', borderRadius: '1.5rem', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)', marginBottom: '2%' }}>
         <div className="flex items-center gap-5" style={{ marginBottom: '40px' }}>
           <div style={{ padding: '16px', borderRadius: '1rem', background: 'rgba(220, 38, 38, 0.08)', border: '1px solid rgba(220, 38, 38, 0.2)' }}>
             <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
