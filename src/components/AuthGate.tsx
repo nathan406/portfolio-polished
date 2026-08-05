@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from 'react';
 
-const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123';
-
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
@@ -20,32 +18,24 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Check env password first (fast)
-    if (password === ADMIN_PASSWORD) {
-      sessionStorage.setItem('admin_auth', 'true');
-      sessionStorage.setItem('admin_key', password);
-      setAuthenticated(true);
-      setError('');
-      return;
-    }
-
-    // Fall back to checking database password
+    setError('');
     try {
-      const res = await fetch('/api/settings');
-      const settings = await res.json();
-      if (settings.admin_password && password === settings.admin_password) {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      if (res.ok) {
         sessionStorage.setItem('admin_auth', 'true');
         sessionStorage.setItem('admin_key', password);
         setAuthenticated(true);
-        setError('');
         return;
       }
+      const data = await res.json().catch(() => ({}));
+      setError(data.error || 'Incorrect password');
     } catch {
-      // If DB is unavailable, use env password only
+      setError('Could not reach the server. Please try again.');
     }
-
-    setError('Incorrect password');
   };
 
   if (checking) {

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import React from 'react';
 import { AuthGate, LogoutButton } from '@/components/AuthGate';
 import { DatePicker } from '@/components/DatePicker';
+import { STRONG_PASSWORD_RE, STRONG_PASSWORD_HINT } from '@/lib/password';
 import type { Project, Technology, Skill, SocialLink } from '@/lib/types';
 
 /* ── Types ── */
@@ -262,6 +263,75 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
           </button>
         </div>
         <div style={{ padding: '32px 40px' }}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function ConfirmDialog({
+  open,
+  title,
+  message,
+  confirmLabel = 'Delete',
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onCancel]);
+
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center"
+      style={{ background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(16px)', padding: '24px' }}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}
+    >
+      <div className="w-full animate-fade-in-up" style={{ maxWidth: '440px', background: '#141414', border: '1px solid rgba(220, 38, 38, 0.15)', borderRadius: '1.5rem', boxShadow: '0 25px 60px rgba(0, 0, 0, 0.6)' }}>
+        <div style={{ padding: '36px 40px', textAlign: 'center' }}>
+          <div
+            className="mx-auto flex items-center justify-center"
+            style={{ width: '72px', height: '72px', borderRadius: '9999px', background: 'rgba(220, 38, 38, 0.1)', border: '1px solid rgba(220, 38, 38, 0.25)', marginBottom: '28px' }}
+          >
+            <NavIcon type="trash" className="w-8 h-8 text-[#DC2626]" />
+          </div>
+          <h3 className="font-display font-bold text-text-primary tracking-tight" style={{ fontSize: '22px', marginBottom: '12px' }}>{title}</h3>
+          <p className="text-text-muted" style={{ fontSize: '14px', lineHeight: '1.8', marginBottom: '36px' }}>{message}</p>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex-1"
+              style={{ padding: '14px 24px', borderRadius: '9999px', fontSize: '14px', fontWeight: 600, background: '#1A1A1A', color: 'rgba(113, 113, 122, 0.9)', border: '1px solid transparent', cursor: 'pointer', transition: 'all 0.2s ease' }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#222222'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#1A1A1A'; }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              className="flex-1"
+              style={{ padding: '14px 24px', borderRadius: '9999px', fontSize: '14px', fontWeight: 700, background: 'linear-gradient(135deg, #DC2626, #EF4444)', color: '#0A0A0A', border: 'none', cursor: 'pointer', boxShadow: '0 8px 24px rgba(220, 38, 38, 0.25)', transition: 'all 0.2s ease' }}
+            >
+              {confirmLabel}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -561,6 +631,7 @@ function ProjectsSection() {
   const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([]);
   const [newSkills, setNewSkills] = useState<{ name: string; category: string }[]>([]);
   const [newSkillName, setNewSkillName] = useState('');
+  const [confirmTarget, setConfirmTarget] = useState<Project | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -631,13 +702,18 @@ function ProjectsSection() {
     finally { setSaving(false); }
   };
 
-  const del = async (id: string) => {
-    if (!confirm('Delete this project permanently?')) return;
+  const del = async (p: Project) => {
+    // Optimistically remove from local state so it disappears instantly
+    setProjects(prev => prev.filter(x => x.id !== p.id));
     try {
-      const r = await fetch(`/api/projects?id=${id}`, { method: 'DELETE', headers: { 'x-admin-key': getKey() } });
+      const r = await fetch(`/api/projects?id=${p.id}`, { method: 'DELETE', headers: { 'x-admin-key': getKey() } });
       if (!r.ok) throw new Error('Failed');
-      setMsg({ type: 'success', text: 'Project deleted!' }); load();
-    } catch { setMsg({ type: 'error', text: 'Failed to delete project' }); }
+      setMsg({ type: 'success', text: 'Project deleted!' });
+    } catch {
+      // Restore the item if the server call failed
+      setProjects(prev => (prev.some(x => x.id === p.id) ? prev : [p, ...prev]));
+      setMsg({ type: 'error', text: 'Failed to delete project' });
+    }
   };
 
   return (
@@ -869,7 +945,7 @@ function ProjectsSection() {
                 <img src={p.image_url || 'https://placehold.co/480x270/1E1E1E/6B7280?text=No+Image'} alt={p.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/480x270/1E1E1E/6B7280?text=No+Image'; }} />
                 <div className="absolute inset-0 flex items-end justify-center pb-5 gap-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0.2), transparent)' }}>
                   <button onClick={() => openEdit(p)} className="transition-all duration-200 hover:scale-110" style={{ padding: '14px', background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)', borderRadius: '50%', border: 'none', cursor: 'pointer' }} title="Edit"><NavIcon type="edit" className="w-[18px] h-[18px] text-white" /></button>
-                  <button onClick={() => del(p.id)} className="transition-all duration-200 hover:scale-110" style={{ padding: '14px', background: 'rgba(220, 38, 38, 0.4)', backdropFilter: 'blur(8px)', borderRadius: '50%', border: 'none', cursor: 'pointer' }} title="Delete"><NavIcon type="trash" className="w-[18px] h-[18px] text-white" /></button>
+                  <button onClick={() => setConfirmTarget(p)} className="transition-all duration-200 hover:scale-110" style={{ padding: '14px', background: 'rgba(220, 38, 38, 0.4)', backdropFilter: 'blur(8px)', borderRadius: '50%', border: 'none', cursor: 'pointer' }} title="Delete"><NavIcon type="trash" className="w-[18px] h-[18px] text-white" /></button>
                   {p.project_url && <a href={p.project_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="transition-all duration-200 hover:scale-110" style={{ padding: '14px', background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)', borderRadius: '50%', display: 'flex' }} title="Open"><NavIcon type="external" className="w-[18px] h-[18px] text-white" /></a>}
                 </div>
               </div>
@@ -889,6 +965,13 @@ function ProjectsSection() {
           ))}
         </div>
       )}
+      <ConfirmDialog
+        open={!!confirmTarget}
+        title="Delete project?"
+        message={confirmTarget ? `This will permanently delete “${confirmTarget.title || 'this project'}” from your portfolio. This action cannot be undone.` : ''}
+        onConfirm={() => { if (confirmTarget) { del(confirmTarget); setConfirmTarget(null); } }}
+        onCancel={() => setConfirmTarget(null)}
+      />
     </div>
   );
 }
@@ -1002,6 +1085,7 @@ function TechnologiesSection() {
     try { const r = await fetch('/api/technologies'); const d = await r.json(); setTechs(Array.isArray(d) ? d : []); } catch { }
     finally { setLoading(false); }
   }, []);
+  const [confirmTarget, setConfirmTarget] = useState<Technology | null>(null);
   useEffect(() => { load(); }, [load]);
 
   const getKey = () => sessionStorage.getItem('admin_key') || '';
@@ -1026,9 +1110,16 @@ function TechnologiesSection() {
     } catch { setMsg({ type: 'error', text: 'Failed' }); } finally { setSaving(false); }
   };
 
-  const del = async (id: string) => {
-    if (!confirm('Delete this technology?')) return;
-    try { await fetch(`/api/technologies?id=${id}`, { method: 'DELETE', headers: { 'x-admin-key': getKey() } }); setMsg({ type: 'success', text: 'Deleted!' }); load(); } catch { setMsg({ type: 'error', text: 'Failed' }); }
+  const del = async (t: Technology) => {
+    // Optimistically remove from local state so it disappears instantly
+    setTechs(prev => prev.filter(x => x.id !== t.id));
+    try {
+      await fetch(`/api/technologies?id=${t.id}`, { method: 'DELETE', headers: { 'x-admin-key': getKey() } });
+      setMsg({ type: 'success', text: 'Deleted!' });
+    } catch {
+      setTechs(prev => (prev.some(x => x.id === t.id) ? prev : [...prev, t]));
+      setMsg({ type: 'error', text: 'Failed' });
+    }
   };
 
   const grouped = techs.reduce((acc: Record<string, Technology[]>, t) => { const cat = t.category || 'Other'; if (!acc[cat]) acc[cat] = []; acc[cat].push(t); return acc; }, {});
@@ -1111,7 +1202,7 @@ function TechnologiesSection() {
                     <p className="font-semibold text-center transition-colors" style={{ fontSize: '14px', color: '#A1A1AA' }}>{t.name}</p>
                     <div className="flex items-center justify-center gap-3 mt-4 opacity-0 group-hover:opacity-100 transition-all duration-200">
                       <button onClick={() => { setForm({ name: t.name, category: t.category, icon_slug: t.icon_slug }); setErrors({}); setEditing(t); setShowForm(true); }} className="p-2 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="edit" className="w-4 h-4 text-text-muted" /></button>
-                      <button onClick={() => del(t.id)} className="p-2 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="trash" className="w-4 h-4 text-text-muted hover:text-accent" /></button>
+                      <button onClick={() => setConfirmTarget(t)} className="p-2 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="trash" className="w-4 h-4 text-text-muted hover:text-accent" /></button>
                     </div>
                   </div>
                 ))}
@@ -1120,6 +1211,13 @@ function TechnologiesSection() {
           ))}
         </div>
       )}
+      <ConfirmDialog
+        open={!!confirmTarget}
+        title="Delete technology?"
+        message={confirmTarget ? `This will permanently delete “${confirmTarget.name || 'this technology'}” from your stack. This action cannot be undone.` : ''}
+        onConfirm={() => { if (confirmTarget) { del(confirmTarget); setConfirmTarget(null); } }}
+        onCancel={() => setConfirmTarget(null)}
+      />
     </div>
   );
 }
@@ -1135,15 +1233,19 @@ function SkillsSection() {
   const [form, setForm] = useState({ name: '', category: '', icon_slug: '' });
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [categoryMode, setCategoryMode] = useState<'select' | 'new'>('select');
 
   const load = useCallback(async () => {
     try { const r = await fetch('/api/skills'); const d = await r.json(); setSkills(Array.isArray(d) ? d : []); } catch { }
     finally { setLoading(false); }
   }, []);
+  const [confirmTarget, setConfirmTarget] = useState<Skill | null>(null);
   useEffect(() => { load(); }, [load]);
 
+  const existingCategories = Array.from(new Set(skills.map(s => s.category).filter(Boolean)));
+
   const getKey = () => sessionStorage.getItem('admin_key') || '';
-  const reset = () => { setForm({ name: '', category: '', icon_slug: '' }); setErrors({}); setEditing(null); setShowForm(false); };
+  const reset = () => { setForm({ name: '', category: '', icon_slug: '' }); setErrors({}); setCategoryMode('select'); setEditing(null); setShowForm(false); };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1164,9 +1266,16 @@ function SkillsSection() {
     } catch { setMsg({ type: 'error', text: 'Failed' }); } finally { setSaving(false); }
   };
 
-  const del = async (id: string) => {
-    if (!confirm('Delete this skill?')) return;
-    try { await fetch(`/api/skills?id=${id}`, { method: 'DELETE', headers: { 'x-admin-key': getKey() } }); setMsg({ type: 'success', text: 'Deleted!' }); load(); } catch { setMsg({ type: 'error', text: 'Failed' }); }
+  const del = async (s: Skill) => {
+    // Optimistically remove from local state so it disappears instantly
+    setSkills(prev => prev.filter(x => x.id !== s.id));
+    try {
+      await fetch(`/api/skills?id=${s.id}`, { method: 'DELETE', headers: { 'x-admin-key': getKey() } });
+      setMsg({ type: 'success', text: 'Deleted!' });
+    } catch {
+      setSkills(prev => (prev.some(x => x.id === s.id) ? prev : [...prev, s]));
+      setMsg({ type: 'error', text: 'Failed' });
+    }
   };
 
   const grouped = skills.reduce((acc: Record<string, Skill[]>, s) => { const cat = s.category || 'Other'; if (!acc[cat]) acc[cat] = []; acc[cat].push(s); return acc; }, {});
@@ -1185,7 +1294,37 @@ function SkillsSection() {
         <Modal title={editing ? 'Edit Skill' : 'New Skill'} onClose={reset}>
           <form onSubmit={submit} noValidate className="flex flex-col" style={{ gap: '32px' }}>
             <Input label="Name *" type="text" value={form.name} error={errors.name} onChange={(e) => { setForm({ ...form, name: e.target.value }); if (errors.name) setErrors({ ...errors, name: '' }); }} placeholder="Communication" required />
-            <Input label="Category" type="text" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="Core, Soft Skills, Tools..." />
+
+            {/* Category — pick an existing one or add a new one */}
+            <div>
+              <label className="block text-text-muted font-medium" style={{ fontSize: '13px', marginBottom: '10px', letterSpacing: '0.02em' }}>Category</label>
+              <select
+                value={categoryMode === 'new' ? '__new__' : form.category}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === '__new__') { setCategoryMode('new'); setForm({ ...form, category: '' }); }
+                  else { setCategoryMode('select'); setForm({ ...form, category: v }); }
+                }}
+                style={{ width: '100%', padding: '1.25rem 1.75rem', fontSize: '15px', borderRadius: '1rem', colorScheme: 'dark', cursor: 'pointer' }}
+                className={`w-full bg-bg border text-text-primary focus:outline-none transition-all duration-200 ${form.category || categoryMode === 'new' ? '' : 'text-text-muted/40'}`}
+              >
+                <option value="">Select a category</option>
+                {existingCategories.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+                <option value="__new__">+ Add new category...</option>
+              </select>
+              {categoryMode === 'new' && (
+                <Input
+                  label="New Category Name"
+                  type="text"
+                  value={form.category}
+                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+                  placeholder="e.g. Soft Skills"
+                />
+              )}
+            </div>
+
             <Input label="Icon Slug (simpleicons.org, optional)" type="text" value={form.icon_slug} onChange={(e) => setForm({ ...form, icon_slug: e.target.value })} placeholder="e.g. git, figma, linux" />
             {form.icon_slug && (
               <div className="flex items-center gap-5" style={{ padding: '20px', background: '#1A1A1A', borderRadius: '1rem', border: '1px solid #1E1E1E' }}>
@@ -1248,8 +1387,8 @@ function SkillsSection() {
                     </div>
                     <p className="font-semibold text-center transition-colors" style={{ fontSize: '14px', color: '#A1A1AA' }}>{s.name}</p>
                     <div className="flex items-center justify-center gap-3 mt-4 opacity-0 group-hover:opacity-100 transition-all duration-200">
-                      <button onClick={() => { setForm({ name: s.name, category: s.category, icon_slug: s.icon_slug }); setErrors({}); setEditing(s); setShowForm(true); }} className="p-2 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="edit" className="w-4 h-4 text-text-muted" /></button>
-                      <button onClick={() => del(s.id)} className="p-2 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="trash" className="w-4 h-4 text-text-muted hover:text-accent" /></button>
+                      <button onClick={() => { setForm({ name: s.name, category: s.category, icon_slug: s.icon_slug }); setErrors({}); setCategoryMode(s.category && existingCategories.includes(s.category) ? 'select' : s.category ? 'new' : 'select'); setEditing(s); setShowForm(true); }} className="p-2 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="edit" className="w-4 h-4 text-text-muted" /></button>
+                      <button onClick={() => setConfirmTarget(s)} className="p-2 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="trash" className="w-4 h-4 text-text-muted hover:text-accent" /></button>
                     </div>
                   </div>
                 ))}
@@ -1258,6 +1397,13 @@ function SkillsSection() {
           ))}
         </div>
       )}
+      <ConfirmDialog
+        open={!!confirmTarget}
+        title="Delete skill?"
+        message={confirmTarget ? `This will permanently delete “${confirmTarget.name || 'this skill'}” from your profile. This action cannot be undone.` : ''}
+        onConfirm={() => { if (confirmTarget) { del(confirmTarget); setConfirmTarget(null); } }}
+        onCancel={() => setConfirmTarget(null)}
+      />
     </div>
   );
 }
@@ -1278,6 +1424,7 @@ function SocialsSection() {
     try { const r = await fetch('/api/socials'); const d = await r.json(); setSocials(Array.isArray(d) ? d : []); } catch { }
     finally { setLoading(false); }
   }, []);
+  const [confirmTarget, setConfirmTarget] = useState<SocialLink | null>(null);
   useEffect(() => { load(); }, [load]);
 
   const getKey = () => sessionStorage.getItem('admin_key') || '';
@@ -1303,9 +1450,16 @@ function SocialsSection() {
     } catch { setMsg({ type: 'error', text: 'Failed' }); } finally { setSaving(false); }
   };
 
-  const del = async (id: string) => {
-    if (!confirm('Delete this social link?')) return;
-    try { await fetch(`/api/socials?id=${id}`, { method: 'DELETE', headers: { 'x-admin-key': getKey() } }); setMsg({ type: 'success', text: 'Deleted!' }); load(); } catch { setMsg({ type: 'error', text: 'Failed' }); }
+  const del = async (s: SocialLink) => {
+    // Optimistically remove from local state so it disappears instantly
+    setSocials(prev => prev.filter(x => x.id !== s.id));
+    try {
+      await fetch(`/api/socials?id=${s.id}`, { method: 'DELETE', headers: { 'x-admin-key': getKey() } });
+      setMsg({ type: 'success', text: 'Deleted!' });
+    } catch {
+      setSocials(prev => (prev.some(x => x.id === s.id) ? prev : [...prev, s]));
+      setMsg({ type: 'error', text: 'Failed' });
+    }
   };
 
   return (
@@ -1383,12 +1537,19 @@ function SocialsSection() {
               </div>
               <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-all duration-200">
                 <button onClick={() => { setForm({ platform: s.platform, url: s.url, icon_slug: s.icon_slug }); setErrors({}); setEditing(s); setShowForm(true); }} className="p-2.5 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }} title="Edit"><NavIcon type="edit" className="w-4 h-4 text-text-muted" /></button>
-                <button onClick={() => del(s.id)} className="p-2.5 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }} title="Delete"><NavIcon type="trash" className="w-4 h-4 text-text-muted hover:text-accent" /></button>
+                <button onClick={() => setConfirmTarget(s)} className="p-2.5 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }} title="Delete"><NavIcon type="trash" className="w-4 h-4 text-text-muted hover:text-accent" /></button>
               </div>
             </div>
           ))}
         </div>
       )}
+      <ConfirmDialog
+        open={!!confirmTarget}
+        title="Delete social link?"
+        message={confirmTarget ? `This will permanently delete “${confirmTarget.platform || 'this social link'}” from your Connect tab. This action cannot be undone.` : ''}
+        onConfirm={() => { if (confirmTarget) { del(confirmTarget); setConfirmTarget(null); } }}
+        onCancel={() => setConfirmTarget(null)}
+      />
     </div>
   );
 }
@@ -1408,6 +1569,7 @@ function ResumeSection() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [resumeIntro, setResumeIntro] = useState('');
   const [resumePdfUrl, setResumePdfUrl] = useState('');
+  const [confirmTarget, setConfirmTarget] = useState<{ item: any; type: 'experience' | 'education' } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -1449,9 +1611,18 @@ function ResumeSection() {
     } catch { setMsg({ type: 'error', text: 'Failed' }); } finally { setSaving(false); }
   };
 
-  const del = async (id: string, type: string) => {
-    if (!confirm('Delete this entry?')) return;
-    try { await fetch(`/api/resume?id=${id}&type=${type}`, { method: 'DELETE', headers: { 'x-admin-key': getKey() } }); setMsg({ type: 'success', text: 'Deleted!' }); load(); } catch { setMsg({ type: 'error', text: 'Failed' }); }
+  const del = async (item: any, type: string) => {
+    // Optimistically remove from local state so it disappears instantly
+    if (type === 'experience') setExp(prev => prev.filter(e => e.id !== item.id));
+    else setEdu(prev => prev.filter(e => e.id !== item.id));
+    try {
+      await fetch(`/api/resume?id=${item.id}&type=${type}`, { method: 'DELETE', headers: { 'x-admin-key': getKey() } });
+      setMsg({ type: 'success', text: 'Deleted!' });
+    } catch {
+      if (type === 'experience') setExp(prev => (prev.some(e => e.id === item.id) ? prev : [...prev, item]));
+      else setEdu(prev => (prev.some(e => e.id === item.id) ? prev : [...prev, item]));
+      setMsg({ type: 'error', text: 'Failed' });
+    }
   };
 
   if (loading) return <div className="flex items-center justify-center" style={{ padding: '120px 0' }}><div className="animate-spin" style={{ width: '40px', height: '40px', border: '2px solid #DC2626', borderTopColor: 'transparent', borderRadius: '50%' }} /></div>;
@@ -1501,7 +1672,7 @@ function ResumeSection() {
                 </div>
                 <div className="flex items-center gap-2 ml-5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-200">
                   <button onClick={() => { setForm({ title: e.title, company: e.company, description: e.description || '', year_start: e.year_start, year_end: e.year_end, type: 'experience' }); setErrors({}); setEditing(e); setShowForm(true); }} className="p-2.5 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="edit" className="w-4 h-4 text-text-muted" /></button>
-                  <button onClick={() => del(e.id, 'experience')} className="p-2.5 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="trash" className="w-4 h-4 text-text-muted hover:text-accent" /></button>
+                  <button onClick={() => setConfirmTarget({ item: e, type: 'experience' })} className="p-2.5 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="trash" className="w-4 h-4 text-text-muted hover:text-accent" /></button>
                 </div>
               </div>
             ))}
@@ -1539,7 +1710,7 @@ function ResumeSection() {
                 </div>
                 <div className="flex items-center gap-2 ml-5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-200">
                   <button onClick={() => { setForm({ title: e.degree, company: e.school, description: e.description || '', year_start: e.year_start, year_end: e.year_end, type: 'education' }); setErrors({}); setEditing({ ...e, _type: 'education' }); setShowForm(true); }} className="p-2.5 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="edit" className="w-4 h-4 text-text-muted" /></button>
-                  <button onClick={() => del(e.id, 'education')} className="p-2.5 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="trash" className="w-4 h-4 text-text-muted hover:text-accent" /></button>
+                  <button onClick={() => setConfirmTarget({ item: e, type: 'education' })} className="p-2.5 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="trash" className="w-4 h-4 text-text-muted hover:text-accent" /></button>
                 </div>
               </div>
             ))}
@@ -1575,6 +1746,13 @@ function ResumeSection() {
           </form>
         </Modal>
       )}
+      <ConfirmDialog
+        open={!!confirmTarget}
+        title={confirmTarget?.type === 'education' ? 'Delete education entry?' : 'Delete experience entry?'}
+        message={confirmTarget ? `This will permanently delete “${confirmTarget.type === 'education' ? (confirmTarget.item.degree || 'this entry') : (confirmTarget.item.title || 'this entry')}” from your resume. This action cannot be undone.` : ''}
+        onConfirm={() => { if (confirmTarget) { del(confirmTarget.item, confirmTarget.type); setConfirmTarget(null); } }}
+        onCancel={() => setConfirmTarget(null)}
+      />
     </div>
   );
 }
@@ -1606,7 +1784,7 @@ function SettingsSection() {
     const newErrors: Record<string, string> = {};
     if (!currentPassword.trim()) newErrors.currentPassword = 'Current password is required';
     if (!newPassword.trim()) newErrors.newPassword = 'New password is required';
-    else if (newPassword.length < 6) newErrors.newPassword = 'Password must be at least 6 characters';
+    else if (!STRONG_PASSWORD_RE.test(newPassword)) newErrors.newPassword = STRONG_PASSWORD_HINT;
     if (!confirmPassword.trim()) newErrors.confirmPassword = 'Please confirm your new password';
     else if (newPassword !== confirmPassword) newErrors.confirmPassword = 'New passwords do not match';
     setErrors(newErrors);
@@ -1649,7 +1827,10 @@ function SettingsSection() {
         </div>
         <form onSubmit={changePassword} noValidate className="space-y-10" style={{ maxWidth: '480px' }}>
           <Input label="Current Password" type="password" value={currentPassword} error={errors.currentPassword} onChange={(e) => { setCurrentPassword(e.target.value); if (errors.currentPassword) setErrors({ ...errors, currentPassword: '' }); }} placeholder="Enter your current password" required />
-          <Input label="New Password" type="password" value={newPassword} error={errors.newPassword} onChange={(e) => { setNewPassword(e.target.value); if (errors.newPassword) setErrors({ ...errors, newPassword: '' }); }} placeholder="Enter a new password (min. 6 characters)" required minLength={6} />
+          <div>
+            <Input label="New Password" type="password" value={newPassword} error={errors.newPassword} onChange={(e) => { setNewPassword(e.target.value); if (errors.newPassword) setErrors({ ...errors, newPassword: '' }); }} placeholder="Enter a new password" required minLength={8} />
+            <p className="text-xs text-text-muted/50" style={{ marginTop: '10px' }}>{STRONG_PASSWORD_HINT}</p>
+          </div>
           <Input label="Confirm New Password" type="password" value={confirmPassword} error={errors.confirmPassword} onChange={(e) => { setConfirmPassword(e.target.value); if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: '' }); }} placeholder="Confirm your new password" required />
           <div style={{ paddingTop: '40px' }}>
             <button type="submit" disabled={saving} style={{

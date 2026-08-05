@@ -28,7 +28,9 @@ export async function GET() {
     `;
     if (result.length > 0) {
       const value = (result[0] as { value?: Record<string, unknown> })?.value || {};
-      return NextResponse.json({ ...DEFAULT_SETTINGS, ...value });
+      // Never expose the admin password through the public settings endpoint
+      const { admin_password: _adminPassword, ...safeValue } = value;
+      return NextResponse.json({ ...DEFAULT_SETTINGS, ...safeValue });
     }
     return NextResponse.json(DEFAULT_SETTINGS);
   } catch (error) {
@@ -38,12 +40,23 @@ export async function GET() {
 }
 
 export async function PUT(request: NextRequest) {
-  if (!checkAuth(request)) {
+  if (!(await checkAuth(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
     const body = await request.json();
+
+    // Preserve the stored admin password if one exists (it lives in the same record)
+    const existing = await sql`
+      SELECT value FROM site_settings WHERE key = 'site_settings' LIMIT 1
+    `;
+    const existingValue = (existing[0] as { value?: Record<string, unknown> } | undefined)?.value || {};
+    const storedPassword =
+      typeof existingValue.admin_password === 'string' && existingValue.admin_password
+        ? existingValue.admin_password
+        : undefined;
+
     const value = {
       bio: body.bio || DEFAULT_SETTINGS.bio,
       subtitle: body.subtitle || DEFAULT_SETTINGS.subtitle,
@@ -52,6 +65,7 @@ export async function PUT(request: NextRequest) {
       resume_intro: body.resume_intro || DEFAULT_SETTINGS.resume_intro,
       resume_pdf_url: body.resume_pdf_url || '',
       profile_image_url: body.profile_image_url || '',
+      ...(storedPassword !== undefined ? { admin_password: storedPassword } : {}),
     };
 
     await sql`

@@ -12,7 +12,7 @@ import type { NextRequest } from 'next/server';
  * Call this once after deploying to initialize your database.
  */
 export async function POST(request: NextRequest) {
-  if (!checkAuth(request)) {
+  if (!(await checkAuth(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

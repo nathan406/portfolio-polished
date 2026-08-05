@@ -3,7 +3,7 @@ import { uploadToB2 } from '@/lib/b2';
 import { checkAuth } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
-  if (!checkAuth(request)) {
+  if (!(await checkAuth(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
