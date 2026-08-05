@@ -28,11 +28,11 @@ function ChannelBannerLoadingSkeleton() {
         {/* Nav tabs skeleton */}
         <div className="border-b border-[#1E1E1E]" style={{ marginTop: 'clamp(60px, 7vh, 100px)' }}>
           <div className="flex gap-10">
-            {['Projects', 'About', 'Resume'].map((tab) => (
+            {['Projects', 'About', 'Experience', 'Resume'].map((tab) => (
               <ShimmerBlock
                 key={tab}
                 className="h-8 bg-[#1A1A1A] rounded-md mb-4"
-                style={{ width: tab === 'Projects' ? '100px' : tab === 'About' ? '80px' : '90px' }}
+                style={{ width: tab === 'Projects' ? '100px' : tab === 'About' ? '80px' : tab === 'Experience' ? '110px' : '90px' }}
               />
             ))}
           </div>

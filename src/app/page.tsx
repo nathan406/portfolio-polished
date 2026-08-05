@@ -87,27 +87,32 @@ function ResumeSkeleton() {
         <div className="bg-surface-elevated rounded-full" style={{ width: '260px', height: '64px' }} />
       </div>
       <div style={{ marginTop: '12rem' }}>
-        <div className="bg-surface-elevated rounded-md" style={{ width: '140px', height: '20px', marginBottom: '5rem' }} />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '7rem' }}>
-          {[1, 2].map((i) => (
-            <div key={i} className="relative" style={{ paddingLeft: '6rem', paddingBottom: '6rem', borderLeft: '1px solid var(--accent-border, #DC262650)' }}>
-              <div className="absolute rounded-full bg-surface-elevated" style={{ width: '16px', height: '16px', left: '17px', top: '8px' }} />
-              <div className="bg-surface-elevated rounded-md" style={{ width: '100px', height: '12px', marginBottom: '1.25rem' }} />
-              <div className="bg-surface-elevated rounded-md" style={{ width: '280px', height: '24px', marginBottom: '0.75rem' }} />
-              <div className="bg-surface-elevated rounded-md" style={{ width: '160px', height: '16px', marginBottom: '1.5rem' }} />
-              <div className="bg-surface-elevated rounded-md" style={{ width: '100%', maxWidth: '500px', height: '12px', marginBottom: '0.25rem' }} />
-              <div className="bg-surface-elevated rounded-md" style={{ width: '80%', maxWidth: '400px', height: '12px' }} />
-            </div>
-          ))}
-        </div>
-      </div>
-      <div style={{ marginTop: '12rem' }}>
         <div className="bg-surface-elevated rounded-md" style={{ width: '120px', height: '20px', marginBottom: '5rem' }} />
         <div style={{ padding: 'clamp(4rem, 5vw, 5rem)' }} className="rounded-2xl bg-surface border border-accent-border">
           <div className="bg-surface-elevated rounded-md" style={{ width: '300px', height: '20px', marginBottom: '1rem' }} />
           <div className="bg-surface-elevated rounded-md" style={{ width: '200px', height: '16px', marginBottom: '0.75rem' }} />
           <div className="bg-surface-elevated rounded-md" style={{ width: '120px', height: '12px' }} />
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ExperienceSkeleton() {
+  return (
+    <div style={{ paddingBottom: '16rem' }}>
+      <div className="bg-surface-elevated rounded-md" style={{ width: '140px', height: '20px', marginBottom: '5rem' }} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '7rem' }}>
+        {[1, 2].map((i) => (
+          <div key={i} className="relative" style={{ paddingLeft: '6rem', paddingBottom: '6rem', borderLeft: '1px solid var(--accent-border, #DC262650)' }}>
+            <div className="absolute rounded-full bg-surface-elevated" style={{ width: '16px', height: '16px', left: '17px', top: '8px' }} />
+            <div className="bg-surface-elevated rounded-md" style={{ width: '100px', height: '12px', marginBottom: '1.25rem' }} />
+            <div className="bg-surface-elevated rounded-md" style={{ width: '280px', height: '24px', marginBottom: '0.75rem' }} />
+            <div className="bg-surface-elevated rounded-md" style={{ width: '160px', height: '16px', marginBottom: '1.5rem' }} />
+            <div className="bg-surface-elevated rounded-md" style={{ width: '100%', maxWidth: '500px', height: '12px', marginBottom: '0.25rem' }} />
+            <div className="bg-surface-elevated rounded-md" style={{ width: '80%', maxWidth: '400px', height: '12px' }} />
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -461,6 +466,87 @@ export default function Home() {
           </>
         )}
 
+        {activeTab === 'experience' && (
+          <>
+            {loading ? <ExperienceSkeleton /> : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12rem' }} className="animate-fade-in-up">
+
+                {/* ── Experience ── */}
+                <div>
+                  <SectionHeading label="Experience" />
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '7rem' }}>
+                    {(resumeData.experience.length > 0 ? resumeData.experience : [
+                      {
+                        year_start: '2024',
+                        year_end: 'Present',
+                        title: 'Senior Fullstack Developer',
+                        company: 'Tech Corp',
+                        description: 'Leading development of enterprise web applications with React and Node.js. Architecting scalable solutions and mentoring junior developers across multiple teams.',
+                      },
+                      {
+                        year_start: '2022',
+                        year_end: '2024',
+                        title: 'Fullstack Developer',
+                        company: 'StartupXYZ',
+                        description: 'Built and shipped multiple client-facing features. Improved application performance by 40% through code optimization and modern best practices.',
+                      },
+                      {
+                        year_start: '2021',
+                        year_end: '2022',
+                        title: 'Junior Developer',
+                        company: 'WebAgency',
+                        description: 'Developed responsive websites and web applications for diverse clients. Collaborated closely with design to create seamless, intuitive user experiences.',
+                      },
+                    ]).map((exp: any, index: number) => {
+                      const entries = resumeData.experience.length > 0 ? resumeData.experience : [];
+                      const isLast = index === (entries.length > 0 ? entries.length - 1 : 2);
+                      const yearDisplay = exp.year_start && exp.year_end
+                        ? `${exp.year_start} — ${exp.year_end}`
+                        : exp.year || '';
+                      return (
+                        <div key={exp.id || index} className="relative group" style={{ paddingLeft: '6rem', paddingBottom: isLast ? '0' : '6rem' }}>
+                          <div
+                            className="absolute"
+                            style={{
+                              left: '19px',
+                              top: '22px',
+                              width: '1px',
+                              bottom: isLast ? undefined : '0',
+                              height: isLast ? '100px' : undefined,
+                              background: isLast
+                                ? 'linear-gradient(to bottom, rgba(220,38,38,0.4), transparent)'
+                                : '#DC262650',
+                            }}
+                          />
+                          <div className="absolute rounded-full bg-bg border-2 border-accent/60 group-hover:border-accent group-hover:bg-accent/20 group-hover:scale-110 transition-all duration-300" style={{ left: '13px', top: '17px', width: '14px', height: '14px' }} />
+                          <div style={{ paddingTop: '0.25rem' }}>
+                            <span className="font-mono-custom text-xs text-accent/70 tracking-wide block" style={{ marginBottom: '1.5rem' }}>
+                              {yearDisplay}
+                            </span>
+                            <h3 className="font-display text-lg sm:text-xl lg:text-2xl font-semibold text-text-primary tracking-tight" style={{ marginBottom: '0.75rem' }}>
+                              {exp.title}
+                            </h3>
+                            <p className="text-sm text-text-muted font-medium" style={{ marginBottom: '1.5rem' }}>
+                              {exp.company}
+                            </p>
+                            <p className="text-sm sm:text-[15px] text-text-secondary" style={{ lineHeight: '1.9', maxWidth: '620px' }}>
+                              {exp.description}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                
+
+              </div>
+            )}
+          </>
+        )}
+
         {activeTab === 'resume' && (
           <>
             {loading ? <ResumeSkeleton /> : (
@@ -503,75 +589,6 @@ export default function Home() {
                       Resume PDF not yet uploaded
                     </div>
                   )}
-                </div>
-
-                {/* ── Experience ── */}
-                <div>
-                  <SectionHeading label="Experience" />
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '7rem' }}>
-                    {(resumeData.experience.length > 0 ? resumeData.experience : [
-                      {
-                        year_start: '2024',
-                        year_end: 'Present',
-                        title: 'Senior Fullstack Developer',
-                        company: 'Tech Corp',
-                        description: 'Leading development of enterprise web applications with React and Node.js. Architecting scalable solutions and mentoring junior developers across multiple teams.',
-                      },
-                      {
-                        year_start: '2022',
-                        year_end: '2024',
-                        title: 'Fullstack Developer',
-                        company: 'StartupXYZ',
-                        description: 'Built and shipped multiple client-facing features. Improved application performance by 40% through code optimization and modern best practices.',
-                      },
-                      {
-                        year_start: '2021',
-                        year_end: '2022',
-                        title: 'Junior Developer',
-                        company: 'WebAgency',
-                        description: 'Developed responsive websites and web applications for diverse clients. Collaborated closely with design to create seamless, intuitive user experiences.',
-                      },
-                    ]).map((exp: any, index: number) => {
-                      const entries = resumeData.experience.length > 0 ? resumeData.experience : [];
-                      const isLast = index === Math.max(entries.length - 1, 2);
-                      const yearDisplay = exp.year_start && exp.year_end
-                        ? `${exp.year_start} — ${exp.year_end}`
-                        : exp.year || '';
-                      return (
-                        <div key={exp.id || index} className="relative group" style={{ paddingLeft: '6rem', paddingBottom: isLast ? '0' : '6rem' }}>
-                          <div
-                            className="absolute"
-                            style={{
-                              left: '19px',
-                              top: '22px',
-                              width: '1px',
-                              bottom: isLast ? undefined : '0',
-                              height: isLast ? '100px' : undefined,
-                              background: isLast
-                                ? 'linear-gradient(to bottom, rgba(220,38,38,0.4), transparent)'
-                                : '#DC262650',
-                            }}
-                          />
-                          <div className="absolute rounded-full bg-bg border-2 border-accent/60 group-hover:border-accent group-hover:bg-accent/20 group-hover:scale-110 transition-all duration-300" style={{ left: '13px', top: '17px', width: '14px', height: '14px' }} />
-                          <div style={{ paddingTop: '0.25rem' }}>
-                            <span className="font-mono-custom text-xs text-accent/70 tracking-wide block" style={{ marginBottom: '1.5rem' }}>
-                              {yearDisplay}
-                            </span>
-                            <h3 className="font-display text-lg sm:text-xl lg:text-2xl font-semibold text-text-primary tracking-tight" style={{ marginBottom: '0.75rem' }}>
-                              {exp.title}
-                            </h3>
-                            <p className="text-sm text-text-muted font-medium" style={{ marginBottom: '1.5rem' }}>
-                              {exp.company}
-                            </p>
-                            <p className="text-sm sm:text-[15px] text-text-secondary" style={{ lineHeight: '1.9', maxWidth: '620px' }}>
-                              {exp.description}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
                 </div>
 
                 {/* ── Education ── */}
