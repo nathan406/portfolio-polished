@@ -21,7 +21,14 @@ export async function GET() {
         WHERE pt.project_id = ANY(${projectIds}::uuid[])
         ORDER BY t.name ASC
       `;
-      // Attach media and technologies to each project
+      const skills = await sql`
+        SELECT ps.project_id, s.id, s.name, s.category, s.icon_slug
+        FROM project_skills ps
+        JOIN skills s ON s.id = ps.skill_id
+        WHERE ps.project_id = ANY(${projectIds}::uuid[])
+        ORDER BY s.name ASC
+      `;
+      // Attach media, technologies, and skills to each project
       return NextResponse.json(
         projects.map((p: any) => ({
           ...p,
@@ -29,6 +36,9 @@ export async function GET() {
           technologies: techs
             .filter((t: any) => t.project_id === p.id)
             .map(({ project_id, ...tech }: any) => tech),
+          skills: skills
+            .filter((s: any) => s.project_id === p.id)
+            .map(({ project_id, ...skill }: any) => skill),
         }))
       );
     }
@@ -99,6 +109,34 @@ export async function POST(request: NextRequest) {
         INSERT INTO project_technologies (project_id, technology_id)
         VALUES (${project.id}, ${tid})
         ON CONFLICT (project_id, technology_id) DO NOTHING
+      `;
+    }
+
+    // Link skills (existing ids + any created inline)
+    const skillIds: string[] = [...new Set<string>((body.skill_ids as string[]) || [])];
+    if (Array.isArray(body.new_skills)) {
+      for (const ns of body.new_skills) {
+        if (!ns || !ns.name || !ns.name.trim()) continue;
+        const existing = await sql`
+          SELECT id FROM skills WHERE LOWER(name) = LOWER(${ns.name.trim()}) LIMIT 1
+        `;
+        if (existing.length > 0) {
+          skillIds.push(existing[0].id);
+          continue;
+        }
+        const created = await sql`
+          INSERT INTO skills (name, category, icon_slug)
+          VALUES (${ns.name.trim()}, ${ns.category || ''}, ${ns.icon_slug || ''})
+          RETURNING id
+        `;
+        skillIds.push(created[0].id);
+      }
+    }
+    for (const sid of skillIds) {
+      await sql`
+        INSERT INTO project_skills (project_id, skill_id)
+        VALUES (${project.id}, ${sid})
+        ON CONFLICT (project_id, skill_id) DO NOTHING
       `;
     }
 
@@ -175,6 +213,30 @@ export async function PUT(request: NextRequest) {
           INSERT INTO project_technologies (project_id, technology_id)
           VALUES (${id}, ${tid})
           ON CONFLICT (project_id, technology_id) DO NOTHING
+        `;
+      }
+    }
+
+    // Replace skills if provided (existing ids + any created inline)
+    if (body.skill_ids || body.new_skills) {
+      await sql`DELETE FROM project_skills WHERE project_id = ${id}`;
+      const skillIds: string[] = [...new Set<string>((body.skill_ids as string[]) || [])];
+      if (Array.isArray(body.new_skills)) {
+        for (const ns of body.new_skills) {
+          if (!ns || !ns.name || !ns.name.trim()) continue;
+          const created = await sql`
+            INSERT INTO skills (name, category, icon_slug)
+            VALUES (${ns.name.trim()}, ${ns.category || ''}, ${ns.icon_slug || ''})
+            RETURNING id
+          `;
+          skillIds.push(created[0].id);
+        }
+      }
+      for (const sid of skillIds) {
+        await sql`
+          INSERT INTO project_skills (project_id, skill_id)
+          VALUES (${id}, ${sid})
+          ON CONFLICT (project_id, skill_id) DO NOTHING
         `;
       }
     }

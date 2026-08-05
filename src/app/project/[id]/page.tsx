@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import sql from '@/lib/db';
-import type { Project, Technology } from '@/lib/types';
+import type { Project, Technology, Skill } from '@/lib/types';
 import { ProjectDetailClient } from '@/components/ProjectDetailClient';
 
 async function getProject(id: string): Promise<Project | null> {
@@ -20,7 +20,16 @@ async function getProject(id: string): Promise<Project | null> {
       ORDER BY t.name ASC
     `;
 
-    return { ...project, technologies: techs as Technology[] } as Project;
+    // Attach skills used in this project
+    const skills = await sql`
+      SELECT s.id, s.name, s.category, s.icon_slug
+      FROM project_skills ps
+      JOIN skills s ON s.id = ps.skill_id
+      WHERE ps.project_id = ${id}
+      ORDER BY s.name ASC
+    `;
+
+    return { ...project, technologies: techs as Technology[], skills: skills as Skill[] } as Project;
   } catch {
     return null;
   }

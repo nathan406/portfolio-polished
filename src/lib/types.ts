@@ -9,6 +9,7 @@ export interface Project {
   timeframe_end: string;
   created_at: string;
   technologies?: Technology[];
+  skills?: Skill[];
 }
 
 export interface ProjectMedia {
@@ -21,6 +22,14 @@ export interface ProjectMedia {
 }
 
 export interface Technology {
+  id: string;
+  name: string;
+  category: string;
+  icon_slug: string;
+  created_at: string;
+}
+
+export interface Skill {
   id: string;
   name: string;
   category: string;

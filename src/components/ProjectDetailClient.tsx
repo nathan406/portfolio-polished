@@ -177,9 +177,9 @@ export function ProjectDetailClient({
               </p>
             </div>
 
-            {/* Technologies — 2.5% above, at least 5% below */}
+            {/* Technologies — 2.5% above; 5% below only when it's the last block */}
             {project.technologies && project.technologies.length > 0 && (
-              <div style={{ marginTop: 'clamp(16px, 2.5vw, 56px)', marginBottom: 'clamp(48px, 5vw, 120px)' }}>
+              <div style={{ marginTop: 'clamp(16px, 2.5vw, 56px)', marginBottom: project.skills && project.skills.length > 0 ? 'clamp(16px, 2.5vw, 56px)' : 'clamp(48px, 5vw, 120px)' }}>
                 <div className="flex items-center gap-4 mb-6">
                   <span className="font-mono-custom text-xs text-accent/70 tracking-wide select-none">{'// ──'}</span>
                   <h2 className="font-display text-lg sm:text-xl font-semibold text-text-primary tracking-tight">
@@ -195,6 +195,31 @@ export function ProjectDetailClient({
                         style={{ padding: 'clamp(10px, 1vw, 20px)' }}
                       >
                         {t.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Skills — 2.5% above, at least 5% below */}
+            {project.skills && project.skills.length > 0 && (
+              <div style={{ marginTop: 'clamp(16px, 2.5vw, 56px)', marginBottom: 'clamp(48px, 5vw, 120px)' }}>
+                <div className="flex items-center gap-4 mb-6">
+                  <span className="font-mono-custom text-xs text-accent/70 tracking-wide select-none">{'// ──'}</span>
+                  <h2 className="font-display text-lg sm:text-xl font-semibold text-text-primary tracking-tight">
+                    Skills
+                  </h2>
+                </div>
+                <div className="rounded-2xl bg-surface border border-border" style={{ padding: 'clamp(20px, 3vw, 48px)' }}>
+                  <div className="flex flex-wrap gap-2.5">
+                    {project.skills.map((s) => (
+                      <span
+                        key={s.id}
+                        className="text-sm font-semibold rounded-full bg-surface-elevated text-text-secondary border border-border hover:border-accent/40 hover:text-text-primary transition-colors duration-200"
+                        style={{ padding: 'clamp(10px, 1vw, 20px)' }}
+                      >
+                        {s.name}
                       </span>
                     ))}
                   </div>

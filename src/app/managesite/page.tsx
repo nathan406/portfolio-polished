@@ -4,16 +4,17 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import React from 'react';
 import { AuthGate, LogoutButton } from '@/components/AuthGate';
 import { DatePicker } from '@/components/DatePicker';
-import type { Project, Technology, SocialLink } from '@/lib/types';
+import type { Project, Technology, Skill, SocialLink } from '@/lib/types';
 
 /* ── Types ── */
 
-type DashboardTab = 'projects' | 'about' | 'technologies' | 'socials' | 'resume' | 'settings';
+type DashboardTab = 'projects' | 'about' | 'technologies' | 'skills' | 'socials' | 'resume' | 'settings';
 
 const NAV_ITEMS: { id: DashboardTab; label: string; icon: string }[] = [
   { id: 'projects', label: 'Projects', icon: 'folder' },
   { id: 'about', label: 'About', icon: 'info' },
   { id: 'technologies', label: 'Technologies', icon: 'code' },
+  { id: 'skills', label: 'Skills', icon: 'star' },
   { id: 'socials', label: 'Social Links', icon: 'link' },
   { id: 'resume', label: 'Resume', icon: 'file' },
   { id: 'settings', label: 'Settings', icon: 'settings' },
@@ -35,6 +36,7 @@ function NavIcon({ type, className = "w-5 h-5" }: { type: string; className?: st
     close: <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
     external: <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>,
     check: <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+    star: <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
   };
   return icons[type] || null;
 }
@@ -555,12 +557,17 @@ function ProjectsSection() {
   const [selectedTechIds, setSelectedTechIds] = useState<string[]>([]);
   const [newTechs, setNewTechs] = useState<{ name: string; category: string }[]>([]);
   const [newTechName, setNewTechName] = useState('');
+  const [allSkills, setAllSkills] = useState<Skill[]>([]);
+  const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([]);
+  const [newSkills, setNewSkills] = useState<{ name: string; category: string }[]>([]);
+  const [newSkillName, setNewSkillName] = useState('');
 
   const load = useCallback(async () => {
     try {
-      const [pr, tr] = await Promise.all([fetch('/api/projects'), fetch('/api/technologies')]);
+      const [pr, tr, sr] = await Promise.all([fetch('/api/projects'), fetch('/api/technologies'), fetch('/api/skills')]);
       const d = await pr.json(); setProjects(Array.isArray(d) ? d : []);
       const t = await tr.json(); setAllTechs(Array.isArray(t) ? t : []);
+      const s = await sr.json(); setAllSkills(Array.isArray(s) ? s : []);
     }
     catch { setMsg({ type: 'error', text: 'Failed to load projects' }); }
     finally { setLoading(false); }
@@ -568,7 +575,7 @@ function ProjectsSection() {
 
   useEffect(() => { load(); }, [load]);
 
-  const reset = () => { setForm({ title: '', description: '', image_url: '', project_url: '', video_url: '', timeframe_start: '', timeframe_end: '' }); setErrors({}); setOngoing(false); setSelectedTechIds([]); setNewTechs([]); setNewTechName(''); setEditing(null); setShowForm(false); };
+  const reset = () => { setForm({ title: '', description: '', image_url: '', project_url: '', video_url: '', timeframe_start: '', timeframe_end: '' }); setErrors({}); setOngoing(false); setSelectedTechIds([]); setNewTechs([]); setNewTechName(''); setSelectedSkillIds([]); setNewSkills([]); setNewSkillName(''); setEditing(null); setShowForm(false); };
 
   const addNewTech = () => {
     const name = newTechName.trim();
@@ -579,9 +586,18 @@ function ProjectsSection() {
     setNewTechName('');
   };
 
+  const addNewSkill = () => {
+    const name = newSkillName.trim();
+    if (!name) return;
+    const exists = [...newSkills.map(s => s.name), ...allSkills.map(s => s.name)]
+      .some(n => n.toLowerCase() === name.toLowerCase());
+    if (!exists) setNewSkills([...newSkills, { name, category: '' }]);
+    setNewSkillName('');
+  };
+
   const openEdit = (p: Project) => {
     setForm({ title: p.title, description: p.description, image_url: p.image_url, project_url: p.project_url, video_url: p.video_url, timeframe_start: p.timeframe_start, timeframe_end: p.timeframe_end });
-    setErrors({}); setOngoing(isOngoingValue(p.timeframe_end)); setSelectedTechIds((p.technologies || []).map(t => t.id)); setNewTechs([]); setNewTechName(''); setEditing(p); setShowForm(true);
+    setErrors({}); setOngoing(isOngoingValue(p.timeframe_end)); setSelectedTechIds((p.technologies || []).map(t => t.id)); setNewTechs([]); setNewTechName(''); setSelectedSkillIds((p.skills || []).map(s => s.id)); setNewSkills([]); setNewSkillName(''); setEditing(p); setShowForm(true);
   };
 
   const getKey = () => sessionStorage.getItem('admin_key') || '';
@@ -604,6 +620,8 @@ function ProjectsSection() {
         ...(editing ? { id: editing.id } : {}),
         technology_ids: selectedTechIds,
         new_technologies: newTechName.trim() ? [...newTechs, { name: newTechName.trim(), category: '' }] : newTechs,
+        skill_ids: selectedSkillIds,
+        new_skills: newSkillName.trim() ? [...newSkills, { name: newSkillName.trim(), category: '' }] : newSkills,
       };
       const r = await fetch('/api/projects', { method, headers: { 'Content-Type': 'application/json', 'x-admin-key': getKey() }, body: JSON.stringify(body) });
       if (!r.ok) throw new Error((await r.json()).error || 'Failed');
@@ -711,6 +729,78 @@ function ProjectsSection() {
                 </button>
               </div>
               <p className="text-xs text-text-muted/50" style={{ marginTop: '10px' }}>Click existing technologies to toggle, or add new ones — they'll be saved with the project.</p>
+            </div>
+
+            {/* Skills */}
+            <div>
+              <label className="block text-text-muted font-medium" style={{ fontSize: '13px', marginBottom: '12px', letterSpacing: '0.02em' }}>Skills</label>
+
+              {allSkills.length > 0 && (
+                <div className="flex flex-wrap gap-2" style={{ marginBottom: '16px' }}>
+                  {allSkills.map(s => {
+                    const selected = selectedSkillIds.includes(s.id);
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => setSelectedSkillIds(selected ? selectedSkillIds.filter(id => id !== s.id) : [...selectedSkillIds, s.id])}
+                        style={{
+                          padding: '10px 18px', borderRadius: '9999px', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          border: `1px solid ${selected ? 'rgba(220, 38, 38, 0.45)' : '#1E1E1E'}`,
+                          background: selected ? 'rgba(220, 38, 38, 0.12)' : '#0A0A0A',
+                          color: selected ? '#fca5a5' : 'rgba(113, 113, 122, 0.8)',
+                        }}
+                        className={selected ? '' : 'hover:border-text-muted/40 hover:text-text-primary'}
+                      >
+                        {selected ? `${s.name} ✕` : s.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {newSkills.length > 0 && (
+                <div className="flex flex-wrap gap-2" style={{ marginBottom: '16px' }}>
+                  {newSkills.map((ns, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setNewSkills(newSkills.filter((_, j) => j !== i))}
+                      style={{ padding: '10px 18px', borderRadius: '9999px', fontSize: '13px', fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s ease', border: '1px dashed rgba(220, 38, 38, 0.5)', background: 'rgba(220, 38, 38, 0.08)', color: '#fca5a5' }}
+                    >
+                      + {ns.name} ✕
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  value={newSkillName}
+                  onChange={(e) => setNewSkillName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addNewSkill(); } }}
+                  placeholder={allSkills.length === 0 ? 'Add a skill (e.g. Communication)' : 'Or add a new skill...'}
+                  style={{ flex: 1, padding: '14px 20px', fontSize: '14px', borderRadius: '1rem', background: '#0A0A0A', border: '1px solid #1E1E1E', color: '#F0EDE8', outline: 'none' }}
+                  className="hover:border-text-muted/30 focus:border-accent transition-all duration-200"
+                />
+                <button
+                  type="button"
+                  onClick={addNewSkill}
+                  disabled={!newSkillName.trim()}
+                  style={{
+                    padding: '14px 24px', borderRadius: '9999px', fontSize: '13px', fontWeight: 600,
+                    cursor: newSkillName.trim() ? 'pointer' : 'not-allowed',
+                    background: newSkillName.trim() ? 'linear-gradient(135deg, #DC2626, #EF4444)' : '#1A1A1A',
+                    color: newSkillName.trim() ? '#0A0A0A' : 'rgba(113, 113, 122, 0.5)',
+                    border: 'none', transition: 'all 0.2s ease',
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+              <p className="text-xs text-text-muted/50" style={{ marginTop: '10px' }}>Click existing skills to toggle, or add new ones — they'll be saved with the project.</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -1022,6 +1112,144 @@ function TechnologiesSection() {
                     <div className="flex items-center justify-center gap-3 mt-4 opacity-0 group-hover:opacity-100 transition-all duration-200">
                       <button onClick={() => { setForm({ name: t.name, category: t.category, icon_slug: t.icon_slug }); setErrors({}); setEditing(t); setShowForm(true); }} className="p-2 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="edit" className="w-4 h-4 text-text-muted" /></button>
                       <button onClick={() => del(t.id)} className="p-2 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="trash" className="w-4 h-4 text-text-muted hover:text-accent" /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Section: Skills ── */
+
+function SkillsSection() {
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<Skill | null>(null);
+  const [form, setForm] = useState({ name: '', category: '', icon_slug: '' });
+  const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const load = useCallback(async () => {
+    try { const r = await fetch('/api/skills'); const d = await r.json(); setSkills(Array.isArray(d) ? d : []); } catch { }
+    finally { setLoading(false); }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const getKey = () => sessionStorage.getItem('admin_key') || '';
+  const reset = () => { setForm({ name: '', category: '', icon_slug: '' }); setErrors({}); setEditing(null); setShowForm(false); };
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const newErrors: Record<string, string> = {};
+    if (!form.name.trim()) newErrors.name = 'Name is required';
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      setMsg({ type: 'error', text: 'Please fill in the required field(s).' });
+      return;
+    }
+    setSaving(true);
+    try {
+      const method = editing ? 'PUT' : 'POST';
+      const body = editing ? { ...form, id: editing.id } : form;
+      const r = await fetch('/api/skills', { method, headers: { 'Content-Type': 'application/json', 'x-admin-key': getKey() }, body: JSON.stringify(body) });
+      if (!r.ok) throw new Error('Failed');
+      setMsg({ type: 'success', text: editing ? 'Skill updated!' : 'Skill created!' }); reset(); load();
+    } catch { setMsg({ type: 'error', text: 'Failed' }); } finally { setSaving(false); }
+  };
+
+  const del = async (id: string) => {
+    if (!confirm('Delete this skill?')) return;
+    try { await fetch(`/api/skills?id=${id}`, { method: 'DELETE', headers: { 'x-admin-key': getKey() } }); setMsg({ type: 'success', text: 'Deleted!' }); load(); } catch { setMsg({ type: 'error', text: 'Failed' }); }
+  };
+
+  const grouped = skills.reduce((acc: Record<string, Skill[]>, s) => { const cat = s.category || 'Other'; if (!acc[cat]) acc[cat] = []; acc[cat].push(s); return acc; }, {});
+
+  return (
+    <div>
+      <SectionHeader
+        title="Skills"
+        subtitle={`${skills.length} skill${skills.length !== 1 ? 's' : ''} in your profile`}
+        action={<PrimaryButton onClick={() => { reset(); setShowForm(true); }}><NavIcon type="plus" className="w-5 h-5" /> Add Skill</PrimaryButton>}
+      />
+
+      <Message msg={msg} onClose={() => setMsg(null)} />
+
+      {showForm && (
+        <Modal title={editing ? 'Edit Skill' : 'New Skill'} onClose={reset}>
+          <form onSubmit={submit} noValidate className="flex flex-col" style={{ gap: '32px' }}>
+            <Input label="Name *" type="text" value={form.name} error={errors.name} onChange={(e) => { setForm({ ...form, name: e.target.value }); if (errors.name) setErrors({ ...errors, name: '' }); }} placeholder="Communication" required />
+            <Input label="Category" type="text" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="Core, Soft Skills, Tools..." />
+            <Input label="Icon Slug (simpleicons.org, optional)" type="text" value={form.icon_slug} onChange={(e) => setForm({ ...form, icon_slug: e.target.value })} placeholder="e.g. git, figma, linux" />
+            {form.icon_slug && (
+              <div className="flex items-center gap-5" style={{ padding: '20px', background: '#1A1A1A', borderRadius: '1rem', border: '1px solid #1E1E1E' }}>
+                <img src={`https://cdn.simpleicons.org/${form.icon_slug.toLowerCase()}/DC2626`} alt="" className="w-9 h-9" onError={(e) => { (e.target as HTMLImageElement).src = `https://cdn.simpleicons.org/${form.icon_slug.toLowerCase()}/888`; }} />
+                <div>
+                  <p className="font-medium text-text-primary" style={{ fontSize: '15px' }}>Icon Preview</p>
+                  <p className="text-sm text-text-muted">simpleicons.org — &ldquo;{form.icon_slug}&rdquo;</p>
+                </div>
+              </div>
+            )}
+            <div className="flex gap-4" style={{ paddingTop: '40px', borderTop: '1px solid rgba(30, 30, 30, 0.6)' }}>
+              <button type="submit" disabled={saving} style={{
+                flex: 1, padding: '1rem 5rem', borderRadius: '9999px', fontSize: '15px', fontWeight: 700,
+                background: saving ? 'linear-gradient(135deg, rgba(220, 38, 38, 0.5), rgba(239, 68, 68, 0.5))' : 'linear-gradient(135deg, #DC2626, #EF4444)',
+                color: '#0A0A0A', border: 'none', cursor: saving ? 'not-allowed' : 'pointer',
+                boxShadow: saving ? 'none' : '0 8px 32px rgba(220, 38, 38, 0.25)',
+                transition: 'all 0.3s ease',
+              }}
+                onMouseEnter={(e) => { if (!saving) { e.currentTarget.style.background = 'linear-gradient(135deg, #EF4444, #DC2626)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(220, 38, 38, 0.35)'; }}}
+                onMouseLeave={(e) => { if (!saving) { e.currentTarget.style.background = 'linear-gradient(135deg, #DC2626, #EF4444)'; e.currentTarget.style.boxShadow = '0 8px 32px rgba(220, 38, 38, 0.25)'; }}}
+              >
+                {saving ? 'Saving...' : editing ? 'Update Skill' : 'Create Skill'}
+              </button>
+              <button type="button" onClick={reset} className="bg-surface-elevated hover:bg-border text-text-muted text-sm font-medium transition-all duration-300" style={{ padding: '14px 28px', borderRadius: '9999px', border: 'none', cursor: 'pointer' }}>Cancel</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {loading ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+          {[1,2,3,4,5,6].map(i => <div key={i} className="animate-pulse" style={{ background: '#141414', border: '1px solid rgba(220, 38, 38, 0.1)', borderRadius: '1rem', padding: '32px' }}><div style={{ height: '24px', background: '#1A1A1A', borderRadius: '8px', width: '75%', margin: '0 auto 12px' }} /><div style={{ height: '16px', background: '#1A1A1A', borderRadius: '8px', width: '50%', margin: '0 auto' }} /></div>)}
+        </div>
+      ) : skills.length === 0 ? (
+        <div className="text-center" style={{ padding: '120px 0' }}>
+          <div style={{ width: '96px', height: '96px', margin: '0 auto 32px', borderRadius: '50%', background: '#141414', border: '2px dashed rgba(220, 38, 38, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <NavIcon type="star" className="w-10 h-10 text-text-muted/30" />
+          </div>
+          <h3 className="font-display font-semibold text-text-muted tracking-tight" style={{ fontSize: '28px', marginBottom: '12px' }}>No skills yet</h3>
+          <p className="text-text-muted/50" style={{ fontSize: '15px', marginBottom: '40px' }}>Add the skills you want to highlight on your profile.</p>
+          <PrimaryButton onClick={() => { reset(); setShowForm(true); }}><NavIcon type="plus" className="w-5 h-5" /> Add Your First Skill</PrimaryButton>
+        </div>
+      ) : (
+        <div className="space-y-12">
+          {Object.entries(grouped).map(([category, items]) => (
+            <div key={category}>
+              <div className="flex items-center gap-4" style={{ marginBottom: '24px' }}>
+                <div style={{ width: '6px', height: '24px', background: 'rgba(220, 38, 38, 0.6)', borderRadius: '3px' }} />
+                <h3 className="font-mono-custom text-accent/80 font-medium" style={{ fontSize: '12px', letterSpacing: '0.15em', textTransform: 'uppercase' }}>{category}</h3>
+                <span className="text-text-muted/50 text-sm">({items.length})</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+                {items.map(s => (
+                  <div key={s.id} className="group relative transition-all duration-300" style={{ background: '#141414', border: '1px solid rgba(220, 38, 38, 0.1)', borderRadius: '1rem', padding: '32px' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.3)'; e.currentTarget.style.background = 'rgba(220, 38, 38, 0.03)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.1)'; e.currentTarget.style.background = '#141414'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                  >
+                    <div className="flex items-center justify-center" style={{ marginBottom: '16px' }}>
+                      <img src={`https://cdn.simpleicons.org/${s.icon_slug?.toLowerCase() || 'undefined'}/888`} alt="" className="w-10 h-10" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    </div>
+                    <p className="font-semibold text-center transition-colors" style={{ fontSize: '14px', color: '#A1A1AA' }}>{s.name}</p>
+                    <div className="flex items-center justify-center gap-3 mt-4 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                      <button onClick={() => { setForm({ name: s.name, category: s.category, icon_slug: s.icon_slug }); setErrors({}); setEditing(s); setShowForm(true); }} className="p-2 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="edit" className="w-4 h-4 text-text-muted" /></button>
+                      <button onClick={() => del(s.id)} className="p-2 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="trash" className="w-4 h-4 text-text-muted hover:text-accent" /></button>
                     </div>
                   </div>
                 ))}
@@ -1449,6 +1677,7 @@ function ManageSiteContent() {
       case 'projects': return <ProjectsSection />;
       case 'about': return <AboutSection />;
       case 'technologies': return <TechnologiesSection />;
+      case 'skills': return <SkillsSection />;
       case 'socials': return <SocialsSection />;
       case 'resume': return <ResumeSection />;
       case 'settings': return <SettingsSection />;

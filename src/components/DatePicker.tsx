@@ -161,7 +161,7 @@ export function DatePicker({
         aria-label={label}
       >
         {/* Header */}
-        <div className="flex items-center justify-between gap-2 px-4 pt-4">
+        <div className="flex items-center justify-between gap-2 px-[22px] pt-4">
           <button
             type="button"
             onClick={prevMonth}
@@ -205,7 +205,7 @@ export function DatePicker({
         </div>
 
         {/* Weekday row */}
-        <div className="grid grid-cols-7 px-4 mt-4">
+        <div className="grid grid-cols-7 px-[22px] mt-4">
           {WEEKDAYS.map((w) => (
             <span key={w} className="text-center text-[11px] font-medium text-text-muted/60" style={{ letterSpacing: '0.05em' }}>
               {w}
@@ -214,7 +214,7 @@ export function DatePicker({
         </div>
 
         {/* Day grid */}
-        <div className="grid grid-cols-7 px-4 pb-2 mt-1">
+        <div className="grid grid-cols-7 px-[22px] pb-2 mt-1">
           {Array.from({ length: firstWeekday }).map((_, i) => (
             <div key={`empty-${i}`} />
           ))}
@@ -240,7 +240,7 @@ export function DatePicker({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-[#2a2a2a] px-4 py-2.5">
+        <div className="flex items-center justify-between border-t border-[#2a2a2a] px-[22px] py-3">
           <button
             type="button"
             onClick={() => {

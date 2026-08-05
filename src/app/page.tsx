@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { ChannelBanner } from '@/components/ChannelBanner';
 import { ProjectGrid } from '@/components/ProjectGrid';
 import type { TabId } from '@/components/ChannelNav';
-import type { Project, Technology, SocialLink } from '@/lib/types';
+import type { Project, Technology, Skill, SocialLink } from '@/lib/types';
 
 /* ── Skeleton helpers ── */
 
@@ -47,6 +47,14 @@ function AboutSkeleton() {
       </div>
       <div style={{ marginTop: '12rem' }}>
         <div className="bg-surface-elevated rounded-md" style={{ width: '100px', height: '20px', marginBottom: '5rem' }} />
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+          {[1, 2, 3, 4, 5].map((s) => (
+            <div key={s} className="bg-surface rounded-2xl border border-accent-border" style={{ height: '144px' }} />
+          ))}
+        </div>
+      </div>
+      <div style={{ marginTop: '12rem' }}>
+        <div className="bg-surface-elevated rounded-md" style={{ width: '70px', height: '20px', marginBottom: '5rem' }} />
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
           {[1, 2, 3, 4, 5].map((s) => (
             <div key={s} className="bg-surface rounded-2xl border border-accent-border" style={{ height: '144px' }} />
@@ -147,6 +155,7 @@ export default function Home() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [settings, setSettings] = useState<any>(null);
   const [technologies, setTechnologies] = useState<Technology[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
   const [socials, setSocials] = useState<SocialLink[]>([]);
   const [resumeData, setResumeData] = useState<{ experience: any[]; education: any[] }>({ experience: [], education: [] });
   const [loading, setLoading] = useState(true);
@@ -157,12 +166,14 @@ export default function Home() {
       fetch('/api/projects').then(r => r.json()).catch(() => []),
       fetch('/api/settings').then(r => r.json()).catch(() => null),
       fetch('/api/technologies').then(r => r.json()).catch(() => []),
+      fetch('/api/skills').then(r => r.json()).catch(() => []),
       fetch('/api/socials').then(r => r.json()).catch(() => []),
       fetch('/api/resume').then(r => r.json()).catch(() => ({ experience: [], education: [] })),
-    ]).then(([projectsData, settingsData, techData, socialsData, resumeResp]) => {
+    ]).then(([projectsData, settingsData, techData, skillsData, socialsData, resumeResp]) => {
       if (Array.isArray(projectsData)) setProjects(projectsData);
       if (settingsData) setSettings(settingsData);
       if (Array.isArray(techData)) setTechnologies(techData);
+      if (Array.isArray(skillsData)) setSkills(skillsData);
       if (Array.isArray(socialsData)) setSocials(socialsData);
       if (resumeResp) setResumeData(resumeResp);
       setLoading(false);
@@ -294,6 +305,98 @@ export default function Home() {
                           category: 'Tools',
                           type: 'dev',
                           items: ['Git', 'VS Code', 'Docker', 'Figma', 'Linux'],
+                        },
+                      ].map((group) => (
+                        <div key={group.category}>
+                          <div className="flex items-center gap-4" style={{ marginBottom: '2rem' }}>
+                            <div className="w-1 bg-accent/60 rounded-full" style={{ height: '1.5rem' }} />
+                            <span className="font-mono-custom text-xs text-accent/80 uppercase tracking-[0.15em]">
+                              {group.category}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5" style={{ gap: '1.5rem' }}>
+                            {group.items.map((skill) => (
+                              <div
+                                key={skill}
+                                className="group relative flex flex-col items-center justify-center bg-surface border border-accent-border rounded-xl hover:border-accent/40 hover:bg-accent-dim transition-all duration-300 cursor-default overflow-hidden"
+                                style={{ gap: '1rem', padding: '1.75rem' }}
+                              >
+                                <div className="absolute top-0 bg-accent/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ left: '20%', right: '20%', height: '2px' }} />
+                                <span className="text-sm font-semibold text-text-secondary group-hover:text-text-primary transition-colors duration-300">
+                                  {skill}
+                                </span>
+                                <span className="text-[10px] text-text-muted/50 group-hover:text-text-muted font-mono-custom transition-colors duration-300">
+                                  {group.type}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                </div>
+
+                {/* ── Skills ── */}
+                <div>
+                  <SectionHeading label="Skills" />
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5rem' }}>
+                    {(() => {
+                      // Group skills by category
+                      const groups: Record<string, Skill[]> = {};
+                      skills.forEach((skill) => {
+                        const cat = skill.category || 'Other';
+                        if (!groups[cat]) groups[cat] = [];
+                        groups[cat].push(skill);
+                      });
+
+                      const entries = Object.entries(groups);
+
+                      if (entries.length > 0) {
+                        return entries.map(([category, items]) => (
+                          <div key={category}>
+                            <div className="flex items-center gap-4" style={{ marginBottom: '2rem' }}>
+                              <div className="w-1 bg-accent/60 rounded-full" style={{ height: '1.5rem' }} />
+                              <span className="font-mono-custom text-xs text-accent/80 uppercase tracking-[0.15em]">
+                                {category}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5" style={{ gap: '1.5rem' }}>
+                              {items.map((skill) => (
+                                <div
+                                  key={skill.id}
+                                  className="group relative flex flex-col items-center justify-center bg-surface border border-accent-border rounded-xl hover:border-accent/40 hover:bg-accent-dim transition-all duration-300 cursor-default overflow-hidden"
+                                  style={{ gap: '0.75rem', padding: '1.5rem' }}
+                                >
+                                  <div className="absolute top-0 bg-accent/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ left: '20%', right: '20%', height: '2px' }} />
+                                  <SimpleIcon slug={skill.icon_slug} className="w-8 h-8" />
+                                  <span className="text-sm font-semibold text-text-secondary group-hover:text-text-primary transition-colors duration-300 text-center">
+                                    {skill.name}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ));
+                      }
+
+                      // Fallback hardcoded skills
+                      return [
+                        {
+                          category: 'Craft',
+                          type: 'core',
+                          items: ['Problem Solving', 'System Design', 'Clean Code', 'Testing', 'Debugging'],
+                        },
+                        {
+                          category: 'People',
+                          type: 'soft',
+                          items: ['Communication', 'Team Leadership', 'Mentoring', 'Collaboration', 'Adaptability'],
+                        },
+                        {
+                          category: 'Process',
+                          type: 'workflow',
+                          items: ['Agile', 'Code Review', 'Documentation', 'Pair Programming'],
                         },
                       ].map((group) => (
                         <div key={group.category}>

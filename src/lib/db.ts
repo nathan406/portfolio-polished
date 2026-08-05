@@ -69,6 +69,16 @@ export async function runMigration(): Promise<boolean> {
     `;
 
     await sql`
+      CREATE TABLE IF NOT EXISTS skills (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name TEXT NOT NULL,
+        category TEXT NOT NULL DEFAULT '',
+        icon_slug TEXT NOT NULL DEFAULT '',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `;
+
+    await sql`
       CREATE TABLE IF NOT EXISTS social_links (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         platform TEXT NOT NULL,
@@ -115,6 +125,16 @@ export async function runMigration(): Promise<boolean> {
     `;
 
     await sql`
+      CREATE TABLE IF NOT EXISTS project_skills (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+        skill_id UUID REFERENCES skills(id) ON DELETE CASCADE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        UNIQUE (project_id, skill_id)
+      );
+    `;
+
+    await sql`
       CREATE TABLE IF NOT EXISTS site_settings (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         key TEXT UNIQUE NOT NULL,
@@ -141,6 +161,10 @@ export async function runMigration(): Promise<boolean> {
     await sql`ALTER TABLE technologies ADD COLUMN IF NOT EXISTS name TEXT NOT NULL DEFAULT ''`;
     await sql`ALTER TABLE technologies ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT ''`;
     await sql`ALTER TABLE technologies ADD COLUMN IF NOT EXISTS icon_slug TEXT NOT NULL DEFAULT ''`;
+
+    await sql`ALTER TABLE skills ADD COLUMN IF NOT EXISTS name TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE skills ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE skills ADD COLUMN IF NOT EXISTS icon_slug TEXT NOT NULL DEFAULT ''`;
 
     await sql`ALTER TABLE social_links ADD COLUMN IF NOT EXISTS platform TEXT NOT NULL DEFAULT ''`;
     await sql`ALTER TABLE social_links ADD COLUMN IF NOT EXISTS url TEXT NOT NULL DEFAULT ''`;
