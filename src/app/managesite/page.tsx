@@ -9,7 +9,7 @@ import type { Project, Technology, Skill, SocialLink } from '@/lib/types';
 
 /* ── Types ── */
 
-type DashboardTab = 'projects' | 'about' | 'technologies' | 'skills' | 'socials' | 'resume' | 'settings';
+type DashboardTab = 'projects' | 'about' | 'technologies' | 'skills' | 'socials' | 'resume' | 'experience' | 'settings';
 
 const NAV_ITEMS: { id: DashboardTab; label: string; icon: string }[] = [
   { id: 'projects', label: 'Projects', icon: 'folder' },
@@ -18,6 +18,7 @@ const NAV_ITEMS: { id: DashboardTab; label: string; icon: string }[] = [
   { id: 'skills', label: 'Skills', icon: 'star' },
   { id: 'socials', label: 'Social Links', icon: 'link' },
   { id: 'resume', label: 'Resume', icon: 'file' },
+  { id: 'experience', label: 'Experience', icon: 'briefcase' },
   { id: 'settings', label: 'Settings', icon: 'settings' },
 ];
 
@@ -38,6 +39,7 @@ function NavIcon({ type, className = "w-5 h-5" }: { type: string; className?: st
     external: <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>,
     check: <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
     star: <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+    briefcase: <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>,
   };
   return icons[type] || null;
 }
@@ -369,6 +371,13 @@ function isOngoingValue(v: string): boolean {
   return !!v && /^(present|ongoing|current)$/i.test(v.trim());
 }
 
+// Formats stored timeframe values for display: ISO dates show just the year,
+// legacy values ("2021", "Present") pass through unchanged.
+function displayYear(v: string): string {
+  if (!v) return '';
+  return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v.slice(0, 4) : v;
+}
+
 function PrimaryButton({ children, onClick, disabled }: { children: React.ReactNode; onClick?: () => void; disabled?: boolean }) {
   return (
     <button
@@ -394,31 +403,6 @@ function PrimaryButton({ children, onClick, disabled }: { children: React.ReactN
       onMouseLeave={(e) => { if (!disabled) { e.currentTarget.style.background = 'linear-gradient(135deg, #DC2626, #EF4444)'; e.currentTarget.style.boxShadow = '0 8px 32px rgba(220, 38, 38, 0.25)'; e.currentTarget.style.transform = 'scale(1)'; }}}
       onMouseDown={(e) => { if (!disabled) e.currentTarget.style.transform = 'scale(0.97)'; }}
       onMouseUp={(e) => { if (!disabled) e.currentTarget.style.transform = 'scale(1.02)'; }}
-    >
-      {children}
-    </button>
-  );
-}
-
-function SecondaryButton({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '10px',
-        padding: '14px 28px',
-        borderRadius: '9999px',
-        fontSize: '13px',
-        fontWeight: 500,
-        background: '#1A1A1A',
-        color: 'rgba(113, 113, 122, 0.8)',
-        cursor: 'pointer',
-        transition: 'all 0.3s ease',
-        border: '1px solid transparent',
-      }}
-      className="hover:bg-[#1E1E1E] hover:text-text-primary active:scale-[0.97]"
     >
       {children}
     </button>
@@ -1554,48 +1538,38 @@ function SocialsSection() {
   );
 }
 
-/* ── Section: Resume ── */
+/* ── Section: Experience ── */
 
-function ResumeSection() {
-  const [settings, setSettings] = useState<any>(null);
+function ExperienceSection() {
   const [exp, setExp] = useState<any[]>([]);
-  const [edu, setEdu] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState({ title: '', company: '', description: '', year_start: '', year_end: '', type: 'experience' });
+  const [form, setForm] = useState({ title: '', company: '', description: '', timeframe_start: '', timeframe_end: '' });
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [resumeIntro, setResumeIntro] = useState('');
-  const [resumePdfUrl, setResumePdfUrl] = useState('');
-  const [confirmTarget, setConfirmTarget] = useState<{ item: any; type: 'experience' | 'education' } | null>(null);
+  const [ongoing, setOngoing] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<any>(null);
 
   const load = useCallback(async () => {
-    try {
-      const [r1, r2] = await Promise.all([fetch('/api/settings'), fetch('/api/resume')]);
-      const s = await r1.json(); const rd = await r2.json();
-      setSettings(s); setResumeIntro(s.resume_intro || ''); setResumePdfUrl(s.resume_pdf_url || '');
-      setExp(rd.experience || []); setEdu(rd.education || []);
-    } catch { }
+    try { const r = await fetch('/api/resume'); const d = await r.json(); setExp(d.experience || []); } catch { }
     finally { setLoading(false); }
   }, []);
   useEffect(() => { load(); }, [load]);
 
   const getKey = () => sessionStorage.getItem('admin_key') || '';
-  const reset = () => { setForm({ title: '', company: '', description: '', year_start: '', year_end: '', type: 'experience' }); setErrors({}); setEditing(null); setShowForm(false); };
+  const reset = () => { setForm({ title: '', company: '', description: '', timeframe_start: '', timeframe_end: '' }); setErrors({}); setOngoing(false); setEditing(null); setShowForm(false); };
 
-  const saveSettings = async () => {
-    try {
-      await fetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'x-admin-key': getKey() }, body: JSON.stringify({ ...settings, resume_intro: resumeIntro, resume_pdf_url: resumePdfUrl }) });
-      setMsg({ type: 'success', text: 'Resume settings saved!' });
-    } catch { setMsg({ type: 'error', text: 'Failed to save settings' }); }
+  const openEdit = (e: any) => {
+    setForm({ title: e.title, company: e.company, description: e.description || '', timeframe_start: toDateValue(e.year_start), timeframe_end: toDateValue(e.year_end) });
+    setErrors({}); setOngoing(isOngoingValue(e.year_end)); setEditing(e); setShowForm(true);
   };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors: Record<string, string> = {};
-    if (!form.title.trim()) newErrors.title = form.type === 'education' ? 'Degree is required' : 'Job title is required';
+    if (!form.title.trim()) newErrors.title = 'Job title is required';
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) {
       setMsg({ type: 'error', text: 'Please fill in the required field(s).' });
@@ -1604,23 +1578,29 @@ function ResumeSection() {
     setSaving(true);
     try {
       const method = editing ? 'PUT' : 'POST';
-      const body = editing ? { ...form, id: editing.id } : form;
+      const body = {
+        title: form.title.trim(),
+        company: form.company,
+        description: form.description,
+        year_start: form.timeframe_start || '',
+        year_end: ongoing ? 'Present' : (form.timeframe_end || ''),
+        type: 'experience',
+        ...(editing ? { id: editing.id } : {}),
+      };
       const r = await fetch('/api/resume', { method, headers: { 'Content-Type': 'application/json', 'x-admin-key': getKey() }, body: JSON.stringify(body) });
       if (!r.ok) throw new Error('Failed');
-      setMsg({ type: 'success', text: editing ? 'Entry updated!' : 'Entry created!' }); reset(); load();
+      setMsg({ type: 'success', text: editing ? 'Experience updated!' : 'Experience created!' }); reset(); load();
     } catch { setMsg({ type: 'error', text: 'Failed' }); } finally { setSaving(false); }
   };
 
-  const del = async (item: any, type: string) => {
+  const del = async (item: any) => {
     // Optimistically remove from local state so it disappears instantly
-    if (type === 'experience') setExp(prev => prev.filter(e => e.id !== item.id));
-    else setEdu(prev => prev.filter(e => e.id !== item.id));
+    setExp(prev => prev.filter(e => e.id !== item.id));
     try {
-      await fetch(`/api/resume?id=${item.id}&type=${type}`, { method: 'DELETE', headers: { 'x-admin-key': getKey() } });
+      await fetch(`/api/resume?id=${item.id}&type=experience`, { method: 'DELETE', headers: { 'x-admin-key': getKey() } });
       setMsg({ type: 'success', text: 'Deleted!' });
     } catch {
-      if (type === 'experience') setExp(prev => (prev.some(e => e.id === item.id) ? prev : [...prev, item]));
-      else setEdu(prev => (prev.some(e => e.id === item.id) ? prev : [...prev, item]));
+      setExp(prev => (prev.some(e => e.id === item.id) ? prev : [...prev, item]));
       setMsg({ type: 'error', text: 'Failed' });
     }
   };
@@ -1628,34 +1608,25 @@ function ResumeSection() {
   if (loading) return <div className="flex items-center justify-center" style={{ padding: '120px 0' }}><div className="animate-spin" style={{ width: '40px', height: '40px', border: '2px solid #DC2626', borderTopColor: 'transparent', borderRadius: '50%' }} /></div>;
 
   return (
-    <div className="space-y-14">
-      <SectionHeader title="Resume" subtitle="Manage your resume content, experience, education, and PDF" />
+    <div>
+      <SectionHeader
+        title="Experience"
+        subtitle={`${exp.length} experience ${exp.length !== 1 ? 'entries' : 'entry'} total`}
+      />
 
       <Message msg={msg} onClose={() => setMsg(null)} />
 
-      <div style={{ padding: '4rem', background: '#141414', border: '1px solid rgba(220, 38, 38, 0.12)', borderRadius: '1.5rem', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)' }} className="space-y-8">
-        <h3 className="font-display font-semibold text-text-primary tracking-tight" style={{ fontSize: '20px' }}>Resume Settings</h3>
-        <TextArea label="Resume Intro Text" value={resumeIntro} onChange={(e) => setResumeIntro(e.target.value)} placeholder="Everything about my experience, education, and technical background..." rows={4} />            <FileUpload label="Resume PDF" accept="application/pdf,.pdf" value={resumePdfUrl} onChange={setResumePdfUrl} />
-        <div style={{ marginTop: '24px' }}>
-          <PrimaryButton onClick={saveSettings}><NavIcon type="check" className="w-5 h-5" /> Save Settings</PrimaryButton>
-        </div>
-      </div>
-
-      <div>
-        <div className="flex items-center justify-between" style={{ marginBottom: '32px' }}>
-          <div className="flex items-center gap-4">
-            <div style={{ width: '6px', height: '28px', background: 'rgba(220, 38, 38, 0.6)', borderRadius: '3px' }} />
-            <h3 className="font-display font-semibold text-text-primary tracking-tight" style={{ fontSize: '20px' }}>Experience</h3>
-            <span className="text-text-muted/50 font-mono-custom text-sm">({exp.length})</span>
+      {exp.length === 0 ? (
+        <div className="text-center" style={{ padding: '120px 0' }}>
+          <div style={{ width: '96px', height: '96px', margin: '0 auto 32px', borderRadius: '50%', background: '#141414', border: '2px dashed rgba(220, 38, 38, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <NavIcon type="briefcase" className="w-10 h-10 text-text-muted/30" />
           </div>
-          <SecondaryButton onClick={() => { reset(); setForm({ ...form, type: 'experience' }); setShowForm(true); }}><NavIcon type="plus" className="w-4 h-4" /> Add Experience</SecondaryButton>
+          <h3 className="font-display font-semibold text-text-muted tracking-tight" style={{ fontSize: '28px', marginBottom: '12px' }}>No experience yet</h3>
+          <p className="text-text-muted/50" style={{ fontSize: '15px', marginBottom: '40px' }}>Add your work history to showcase your career.</p>
+          <PrimaryButton onClick={() => { reset(); setShowForm(true); }}><NavIcon type="plus" className="w-5 h-5" /> Add Experience</PrimaryButton>
         </div>
-        {exp.length === 0 ? (
-          <div className="text-center space-y-5" style={{ padding: '80px 0', background: '#141414', border: '1px solid rgba(220, 38, 38, 0.1)', borderRadius: '1.5rem' }}>
-            <p className="text-text-muted/60" style={{ fontSize: '15px' }}>No experience entries yet.</p>
-            <SecondaryButton onClick={() => { reset(); setForm({ ...form, type: 'experience' }); setShowForm(true); }}><NavIcon type="plus" className="w-4 h-4" /> Add Experience</SecondaryButton>
-          </div>
-        ) : (
+      ) : (
+        <>
           <div className="space-y-5">
             {exp.map((e: any) => (
               <div key={e.id} className="group flex items-start justify-between transition-all duration-300" style={{ background: '#141414', border: '1px solid rgba(220, 38, 38, 0.1)', borderRadius: '1rem', padding: '24px 32px' }}
@@ -1665,68 +1636,44 @@ function ResumeSection() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-4" style={{ marginBottom: '6px' }}>
                     <h4 className="font-semibold text-text-primary" style={{ fontSize: '15px' }}>{e.title}</h4>
-                    <span className="text-text-muted/50 font-mono-custom" style={{ fontSize: '12px', padding: '4px 12px', background: '#1A1A1A', borderRadius: '9999px' }}>{e.year_start}{e.year_end ? ` — ${e.year_end}` : ''}</span>
+                    <span className="text-text-muted/50 font-mono-custom" style={{ fontSize: '12px', padding: '4px 12px', background: '#1A1A1A', borderRadius: '9999px' }}>{displayYear(e.year_start)}{e.year_end ? ` — ${displayYear(e.year_end)}` : ''}</span>
                   </div>
                   <p className="text-text-muted font-medium" style={{ fontSize: '13px', marginBottom: '12px' }}>{e.company}</p>
                   {e.description && <p className="text-text-muted/70 leading-relaxed" style={{ fontSize: '13px' }}>{e.description}</p>}
                 </div>
                 <div className="flex items-center gap-2 ml-5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-200">
-                  <button onClick={() => { setForm({ title: e.title, company: e.company, description: e.description || '', year_start: e.year_start, year_end: e.year_end, type: 'experience' }); setErrors({}); setEditing(e); setShowForm(true); }} className="p-2.5 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="edit" className="w-4 h-4 text-text-muted" /></button>
-                  <button onClick={() => setConfirmTarget({ item: e, type: 'experience' })} className="p-2.5 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="trash" className="w-4 h-4 text-text-muted hover:text-accent" /></button>
+                  <button onClick={() => openEdit(e)} className="p-2.5 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="edit" className="w-4 h-4 text-text-muted" /></button>
+                  <button onClick={() => setConfirmTarget(e)} className="p-2.5 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="trash" className="w-4 h-4 text-text-muted hover:text-accent" /></button>
                 </div>
               </div>
             ))}
           </div>
-        )}
-      </div>
-
-      <div>
-        <div className="flex items-center justify-between" style={{ marginBottom: '32px' }}>
-          <div className="flex items-center gap-4">
-            <div style={{ width: '6px', height: '28px', background: 'rgba(220, 38, 38, 0.6)', borderRadius: '3px' }} />
-            <h3 className="font-display font-semibold text-text-primary tracking-tight" style={{ fontSize: '20px' }}>Education</h3>
-            <span className="text-text-muted/50 font-mono-custom text-sm">({edu.length})</span>
+          <div className="flex justify-center" style={{ marginTop: '40px' }}>
+            <PrimaryButton onClick={() => { reset(); setShowForm(true); }}><NavIcon type="plus" className="w-5 h-5" /> Add Experience</PrimaryButton>
           </div>
-          <SecondaryButton onClick={() => { reset(); setForm({ ...form, type: 'education' }); setShowForm(true); }}><NavIcon type="plus" className="w-4 h-4" /> Add Education</SecondaryButton>
-        </div>
-        {edu.length === 0 ? (          <div className="text-center space-y-5" style={{ padding: '80px 0', background: '#141414', border: '1px solid rgba(220, 38, 38, 0.1)', borderRadius: '1.5rem' }}>
-            <p className="text-text-muted/60" style={{ fontSize: '15px' }}>No education entries yet.</p>
-            <SecondaryButton onClick={() => { reset(); setForm({ ...form, type: 'education' }); setShowForm(true); }}><NavIcon type="plus" className="w-4 h-4" /> Add Education</SecondaryButton>
-          </div>
-        ) : (
-          <div className="space-y-5">
-            {edu.map((e: any) => (
-              <div key={e.id} className="group flex items-start justify-between transition-all duration-300" style={{ background: '#141414', border: '1px solid rgba(220, 38, 38, 0.1)', borderRadius: '1rem', padding: '24px 32px' }}
-                onMouseEnter={(e2) => { e2.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.3)'; }}
-                onMouseLeave={(e2) => { e2.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.1)'; }}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-4" style={{ marginBottom: '6px' }}>
-                    <h4 className="font-semibold text-text-primary" style={{ fontSize: '15px' }}>{e.degree}</h4>
-                    <span className="text-text-muted/50 font-mono-custom" style={{ fontSize: '12px', padding: '4px 12px', background: '#1A1A1A', borderRadius: '9999px' }}>{e.year_start}{e.year_end ? ` — ${e.year_end}` : ''}</span>
-                  </div>
-                  <p className="text-text-muted font-medium" style={{ fontSize: '13px', marginBottom: '12px' }}>{e.school}</p>
-                  {e.description && <p className="text-text-muted/70 leading-relaxed" style={{ fontSize: '13px' }}>{e.description}</p>}
-                </div>
-                <div className="flex items-center gap-2 ml-5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-200">
-                  <button onClick={() => { setForm({ title: e.degree, company: e.school, description: e.description || '', year_start: e.year_start, year_end: e.year_end, type: 'education' }); setErrors({}); setEditing({ ...e, _type: 'education' }); setShowForm(true); }} className="p-2.5 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="edit" className="w-4 h-4 text-text-muted" /></button>
-                  <button onClick={() => setConfirmTarget({ item: e, type: 'education' })} className="p-2.5 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="trash" className="w-4 h-4 text-text-muted hover:text-accent" /></button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+        </>
+      )}
 
       {showForm && (
-        <Modal title={editing ? 'Edit Entry' : 'New Entry'} onClose={reset}>
+        <Modal title={editing ? 'Edit Experience' : 'New Experience'} onClose={reset}>
           <form onSubmit={submit} noValidate className="flex flex-col" style={{ gap: '32px' }}>
-            <Input label={form.type === 'education' ? 'Degree / Title *' : 'Job Title *'} type="text" value={form.title} error={errors.title} onChange={(e) => { setForm({ ...form, title: e.target.value }); if (errors.title) setErrors({ ...errors, title: '' }); }} placeholder={form.type === 'education' ? 'B.Sc. Computer Science' : 'Senior Fullstack Developer'} required />
-            <Input label={form.type === 'education' ? 'School / Institution' : 'Company'} type="text" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} placeholder={form.type === 'education' ? 'University of Technology' : 'Tech Corp'} />
+            <Input label="Job Title *" type="text" value={form.title} error={errors.title} onChange={(e) => { setForm({ ...form, title: e.target.value }); if (errors.title) setErrors({ ...errors, title: '' }); }} placeholder="Senior Fullstack Developer" required />
+            <Input label="Company" type="text" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} placeholder="Tech Corp" />
             <TextArea label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Describe your role, responsibilities, and achievements..." rows={4} />
-            <div className="grid grid-cols-2 gap-6">
-              <Input label="Year Start" type="text" value={form.year_start} onChange={(e) => setForm({ ...form, year_start: e.target.value })} placeholder="e.g. 2021" />
-              <Input label="Year End" type="text" value={form.year_end} onChange={(e) => setForm({ ...form, year_end: e.target.value })} placeholder="e.g. 2024 or Present" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <DatePicker label="Start Date" value={toDateValue(form.timeframe_start)} onChange={(v) => setForm({ ...form, timeframe_start: v })} />
+              <div>
+                <DatePicker label={ongoing ? 'End Date — Present' : 'End Date'} value={ongoing ? '' : toDateValue(form.timeframe_end)} disabled={ongoing} onChange={(v) => setForm({ ...form, timeframe_end: v })} />
+                <label className="flex items-center gap-2.5 mt-3 cursor-pointer select-none transition-colors duration-200" style={{ fontSize: '13px', color: ongoing ? '#fca5a5' : 'rgba(113, 113, 122, 0.8)' }}>
+                  <input
+                    type="checkbox"
+                    checked={ongoing}
+                    onChange={(e) => { setOngoing(e.target.checked); setForm({ ...form, timeframe_end: e.target.checked ? 'Present' : '' }); }}
+                    className="w-4 h-4 accent-[#DC2626] cursor-pointer"
+                  />
+                  Currently ongoing (shows “Present”)
+                </label>
+              </div>
             </div>
             <div className="flex gap-4" style={{ paddingTop: '40px', borderTop: '1px solid rgba(30, 30, 30, 0.6)' }}>
               <button type="submit" disabled={saving} style={{
@@ -1736,21 +1683,213 @@ function ResumeSection() {
                 boxShadow: saving ? 'none' : '0 8px 32px rgba(220, 38, 38, 0.25)',
                 transition: 'all 0.3s ease',
               }}
-                onMouseEnter={(e) => { if (!saving) { e.currentTarget.style.background = 'linear-gradient(135deg, #EF4444, #DC2626)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(220, 38, 38, 0.35)'; }}}
-                onMouseLeave={(e) => { if (!saving) { e.currentTarget.style.background = 'linear-gradient(135deg, #DC2626, #EF4444)'; e.currentTarget.style.boxShadow = '0 8px 32px rgba(220, 38, 38, 0.25)'; }}}
+                onMouseEnter={(e) => { if (!saving) { e.currentTarget.style.background = 'linear-gradient(135deg, #EF4444, #DC2626)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(220, 38, 38, 0.35)'; } }}
+                onMouseLeave={(e) => { if (!saving) { e.currentTarget.style.background = 'linear-gradient(135deg, #DC2626, #EF4444)'; e.currentTarget.style.boxShadow = '0 8px 32px rgba(220, 38, 38, 0.25)'; } }}
               >
-                {saving ? 'Saving...' : editing ? 'Update Entry' : 'Create Entry'}
+                {saving ? 'Saving...' : editing ? 'Update Experience' : 'Create Experience'}
               </button>
               <button type="button" onClick={reset} className="bg-surface-elevated hover:bg-border text-text-muted text-sm font-medium transition-all duration-300" style={{ padding: '14px 28px', borderRadius: '9999px', border: 'none', cursor: 'pointer' }}>Cancel</button>
             </div>
           </form>
         </Modal>
       )}
+
       <ConfirmDialog
         open={!!confirmTarget}
-        title={confirmTarget?.type === 'education' ? 'Delete education entry?' : 'Delete experience entry?'}
-        message={confirmTarget ? `This will permanently delete “${confirmTarget.type === 'education' ? (confirmTarget.item.degree || 'this entry') : (confirmTarget.item.title || 'this entry')}” from your resume. This action cannot be undone.` : ''}
-        onConfirm={() => { if (confirmTarget) { del(confirmTarget.item, confirmTarget.type); setConfirmTarget(null); } }}
+        title="Delete experience entry?"
+        message={confirmTarget ? `This will permanently delete “${confirmTarget.title || 'this entry'}” from your experience. This action cannot be undone.` : ''}
+        onConfirm={() => { if (confirmTarget) { del(confirmTarget); setConfirmTarget(null); } }}
+        onCancel={() => setConfirmTarget(null)}
+      />
+    </div>
+  );
+}
+
+/* ── Section: Resume ── */
+
+function ResumeSection() {
+  const [settings, setSettings] = useState<any>(null);
+  const [edu, setEdu] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  const [form, setForm] = useState({ title: '', company: '', description: '', timeframe_start: '', timeframe_end: '' });
+  const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [ongoing, setOngoing] = useState(false);
+  const [resumeIntro, setResumeIntro] = useState('');
+  const [resumePdfUrl, setResumePdfUrl] = useState('');
+  const [confirmTarget, setConfirmTarget] = useState<any>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const [r1, r2] = await Promise.all([fetch('/api/settings'), fetch('/api/resume')]);
+      const s = await r1.json(); const rd = await r2.json();
+      setSettings(s); setResumeIntro(s.resume_intro || ''); setResumePdfUrl(s.resume_pdf_url || '');
+      setEdu(rd.education || []);
+    } catch { }
+    finally { setLoading(false); }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const getKey = () => sessionStorage.getItem('admin_key') || '';
+  const reset = () => { setForm({ title: '', company: '', description: '', timeframe_start: '', timeframe_end: '' }); setErrors({}); setOngoing(false); setEditing(null); setShowForm(false); };
+
+  const saveSettings = async () => {
+    try {
+      await fetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'x-admin-key': getKey() }, body: JSON.stringify({ ...settings, resume_intro: resumeIntro, resume_pdf_url: resumePdfUrl }) });
+      setMsg({ type: 'success', text: 'Resume settings saved!' });
+    } catch { setMsg({ type: 'error', text: 'Failed to save settings' }); }
+  };
+
+  const openEdit = (e: any) => {
+    setForm({ title: e.degree, company: e.school, description: e.description || '', timeframe_start: toDateValue(e.year_start), timeframe_end: toDateValue(e.year_end) });
+    setErrors({}); setOngoing(isOngoingValue(e.year_end)); setEditing(e); setShowForm(true);
+  };
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const newErrors: Record<string, string> = {};
+    if (!form.title.trim()) newErrors.title = 'Degree is required';
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      setMsg({ type: 'error', text: 'Please fill in the required field(s).' });
+      return;
+    }
+    setSaving(true);
+    try {
+      const method = editing ? 'PUT' : 'POST';
+      const body = {
+        title: form.title.trim(),
+        company: form.company,
+        description: form.description,
+        year_start: form.timeframe_start || '',
+        year_end: ongoing ? 'Present' : (form.timeframe_end || ''),
+        type: 'education',
+        ...(editing ? { id: editing.id } : {}),
+      };
+      const r = await fetch('/api/resume', { method, headers: { 'Content-Type': 'application/json', 'x-admin-key': getKey() }, body: JSON.stringify(body) });
+      if (!r.ok) throw new Error('Failed');
+      setMsg({ type: 'success', text: editing ? 'Education updated!' : 'Education created!' }); reset(); load();
+    } catch { setMsg({ type: 'error', text: 'Failed' }); } finally { setSaving(false); }
+  };
+
+  const del = async (item: any) => {
+    // Optimistically remove from local state so it disappears instantly
+    setEdu(prev => prev.filter(e => e.id !== item.id));
+    try {
+      await fetch(`/api/resume?id=${item.id}&type=education`, { method: 'DELETE', headers: { 'x-admin-key': getKey() } });
+      setMsg({ type: 'success', text: 'Deleted!' });
+    } catch {
+      setEdu(prev => (prev.some(e => e.id === item.id) ? prev : [...prev, item]));
+      setMsg({ type: 'error', text: 'Failed' });
+    }
+  };
+
+  if (loading) return <div className="flex items-center justify-center" style={{ padding: '120px 0' }}><div className="animate-spin" style={{ width: '40px', height: '40px', border: '2px solid #DC2626', borderTopColor: 'transparent', borderRadius: '50%' }} /></div>;
+
+  return (
+    <div className="space-y-10">
+      <SectionHeader title="Resume" subtitle="Manage your resume intro, PDF, and education" />
+
+      <Message msg={msg} onClose={() => setMsg(null)} />
+
+      <div style={{ padding: '4rem', background: '#141414', border: '1px solid rgba(220, 38, 38, 0.12)', borderRadius: '1.5rem', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)' }} className="space-y-8">
+        <h3 className="font-display font-semibold text-text-primary tracking-tight" style={{ fontSize: '20px' }}>Resume Settings</h3>
+        <TextArea label="Resume Intro Text" value={resumeIntro} onChange={(e) => setResumeIntro(e.target.value)} placeholder="Everything about my experience, education, and technical background..." rows={4} />
+        <FileUpload label="Resume PDF" accept="application/pdf,.pdf" value={resumePdfUrl} onChange={setResumePdfUrl} />
+        <div style={{ marginTop: '24px' }}>
+          <PrimaryButton onClick={saveSettings}><NavIcon type="check" className="w-5 h-5" /> Save Settings</PrimaryButton>
+        </div>
+      </div>
+
+      <div>
+        <div className="flex items-center gap-4" style={{ marginBottom: '32px' }}>
+          <div style={{ width: '6px', height: '28px', background: 'rgba(220, 38, 38, 0.6)', borderRadius: '3px' }} />
+          <h3 className="font-display font-semibold text-text-primary tracking-tight" style={{ fontSize: '20px' }}>Education</h3>
+          <span className="text-text-muted/50 font-mono-custom text-sm">({edu.length})</span>
+        </div>
+        {edu.length === 0 ? (
+          <div className="text-center space-y-5" style={{ padding: '80px 0', background: '#141414', border: '1px solid rgba(220, 38, 38, 0.1)', borderRadius: '1.5rem' }}>
+            <p className="text-text-muted/60" style={{ fontSize: '15px' }}>No education entries yet.</p>
+            <PrimaryButton onClick={() => { reset(); setShowForm(true); }}><NavIcon type="plus" className="w-5 h-5" /> Add Education</PrimaryButton>
+          </div>
+        ) : (
+          <>
+            <div className="space-y-5">
+              {edu.map((e: any) => (
+                <div key={e.id} className="group flex items-start justify-between transition-all duration-300" style={{ background: '#141414', border: '1px solid rgba(220, 38, 38, 0.1)', borderRadius: '1rem', padding: '24px 32px' }}
+                  onMouseEnter={(e2) => { e2.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.3)'; }}
+                  onMouseLeave={(e2) => { e2.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.1)'; }}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-4" style={{ marginBottom: '6px' }}>
+                      <h4 className="font-semibold text-text-primary" style={{ fontSize: '15px' }}>{e.degree}</h4>
+                      <span className="text-text-muted/50 font-mono-custom" style={{ fontSize: '12px', padding: '4px 12px', background: '#1A1A1A', borderRadius: '9999px' }}>{displayYear(e.year_start)}{e.year_end ? ` — ${displayYear(e.year_end)}` : ''}</span>
+                    </div>
+                    <p className="text-text-muted font-medium" style={{ fontSize: '13px', marginBottom: '12px' }}>{e.school}</p>
+                    {e.description && <p className="text-text-muted/70 leading-relaxed" style={{ fontSize: '13px' }}>{e.description}</p>}
+                  </div>
+                  <div className="flex items-center gap-2 ml-5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                    <button onClick={() => openEdit(e)} className="p-2.5 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="edit" className="w-4 h-4 text-text-muted" /></button>
+                    <button onClick={() => setConfirmTarget(e)} className="p-2.5 hover:bg-surface-elevated transition-colors" style={{ borderRadius: '10px', border: 'none', cursor: 'pointer', background: 'transparent' }}><NavIcon type="trash" className="w-4 h-4 text-text-muted hover:text-accent" /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-center" style={{ marginTop: '40px' }}>
+              <PrimaryButton onClick={() => { reset(); setShowForm(true); }}><NavIcon type="plus" className="w-5 h-5" /> Add Education</PrimaryButton>
+            </div>
+          </>
+        )}
+      </div>
+
+      {showForm && (
+        <Modal title={editing ? 'Edit Education' : 'New Education'} onClose={reset}>
+          <form onSubmit={submit} noValidate className="flex flex-col" style={{ gap: '32px' }}>
+            <Input label="Degree / Title *" type="text" value={form.title} error={errors.title} onChange={(e) => { setForm({ ...form, title: e.target.value }); if (errors.title) setErrors({ ...errors, title: '' }); }} placeholder="B.Sc. Computer Science" required />
+            <Input label="School / Institution" type="text" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} placeholder="University of Technology" />
+            <TextArea label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Describe your studies, focus areas, and achievements..." rows={4} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <DatePicker label="Start Date" value={toDateValue(form.timeframe_start)} onChange={(v) => setForm({ ...form, timeframe_start: v })} />
+              <div>
+                <DatePicker label={ongoing ? 'End Date — Present' : 'End Date'} value={ongoing ? '' : toDateValue(form.timeframe_end)} disabled={ongoing} onChange={(v) => setForm({ ...form, timeframe_end: v })} />
+                <label className="flex items-center gap-2.5 mt-3 cursor-pointer select-none transition-colors duration-200" style={{ fontSize: '13px', color: ongoing ? '#fca5a5' : 'rgba(113, 113, 122, 0.8)' }}>
+                  <input
+                    type="checkbox"
+                    checked={ongoing}
+                    onChange={(e) => { setOngoing(e.target.checked); setForm({ ...form, timeframe_end: e.target.checked ? 'Present' : '' }); }}
+                    className="w-4 h-4 accent-[#DC2626] cursor-pointer"
+                  />
+                  Currently ongoing (shows “Present”)
+                </label>
+              </div>
+            </div>
+            <div className="flex gap-4" style={{ paddingTop: '40px', borderTop: '1px solid rgba(30, 30, 30, 0.6)' }}>
+              <button type="submit" disabled={saving} style={{
+                flex: 1, padding: '1rem 5rem', borderRadius: '9999px', fontSize: '15px', fontWeight: 700,
+                background: saving ? 'linear-gradient(135deg, rgba(220, 38, 38, 0.5), rgba(239, 68, 68, 0.5))' : 'linear-gradient(135deg, #DC2626, #EF4444)',
+                color: '#0A0A0A', border: 'none', cursor: saving ? 'not-allowed' : 'pointer',
+                boxShadow: saving ? 'none' : '0 8px 32px rgba(220, 38, 38, 0.25)',
+                transition: 'all 0.3s ease',
+              }}
+                onMouseEnter={(e) => { if (!saving) { e.currentTarget.style.background = 'linear-gradient(135deg, #EF4444, #DC2626)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(220, 38, 38, 0.35)'; } }}
+                onMouseLeave={(e) => { if (!saving) { e.currentTarget.style.background = 'linear-gradient(135deg, #DC2626, #EF4444)'; e.currentTarget.style.boxShadow = '0 8px 32px rgba(220, 38, 38, 0.25)'; } }}
+              >
+                {saving ? 'Saving...' : editing ? 'Update Education' : 'Create Education'}
+              </button>
+              <button type="button" onClick={reset} className="bg-surface-elevated hover:bg-border text-text-muted text-sm font-medium transition-all duration-300" style={{ padding: '14px 28px', borderRadius: '9999px', border: 'none', cursor: 'pointer' }}>Cancel</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      <ConfirmDialog
+        open={!!confirmTarget}
+        title="Delete education entry?"
+        message={confirmTarget ? `This will permanently delete “${confirmTarget.degree || 'this entry'}” from your resume. This action cannot be undone.` : ''}
+        onConfirm={() => { if (confirmTarget) { del(confirmTarget); setConfirmTarget(null); } }}
         onCancel={() => setConfirmTarget(null)}
       />
     </div>
@@ -1915,6 +2054,7 @@ function ManageSiteContent() {
       case 'skills': return <SkillsSection />;
       case 'socials': return <SocialsSection />;
       case 'resume': return <ResumeSection />;
+      case 'experience': return <ExperienceSection />;
       case 'settings': return <SettingsSection />;
       default: return <ProjectsSection />;
     }
