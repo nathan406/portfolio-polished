@@ -1450,7 +1450,7 @@ function SocialsSection() {
     <div>
       <SectionHeader
         title="Social Links"
-        subtitle="Manage the social links displayed on your portfolio's Connect tab"
+        subtitle="Manage the contact links shown under your name on the homepage"
         action={<PrimaryButton onClick={() => { reset(); setShowForm(true); }}><NavIcon type="plus" className="w-5 h-5" /> Add Social Link</PrimaryButton>}
       />
 
@@ -1556,7 +1556,7 @@ function SocialsSection() {
       <ConfirmDialog
         open={!!confirmTarget}
         title="Delete social link?"
-        message={confirmTarget ? `This will permanently delete “${confirmTarget.platform || 'this social link'}” from your Connect tab. This action cannot be undone.` : ''}
+        message={confirmTarget ? `This will permanently delete “${confirmTarget.platform || 'this social link'}”. This action cannot be undone.` : ''}
         onConfirm={() => { if (confirmTarget) { del(confirmTarget); setConfirmTarget(null); } }}
         onCancel={() => setConfirmTarget(null)}
       />

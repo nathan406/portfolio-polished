@@ -205,6 +205,7 @@ export default function Home() {
         subtitle={settings?.subtitle}
         bio={settings?.bio}
         profileImageUrl={settings?.profile_image_url}
+        socials={socials}
       />
 
       <section
@@ -564,7 +565,7 @@ export default function Home() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12rem' }} className="animate-fade-in-up">
 
                 {/* ── Resume ── */}
-                <div style={{ padding: 'clamp(4rem, 6vw, 7rem)' }} className="bg-surface border border-accent-border rounded-2xl hover:border-accent/20 transition-colors duration-500">
+                <div style={{ padding: 'clamp(2rem, 4vw, 7rem)' }} className="bg-surface border border-accent-border rounded-2xl hover:border-accent/20 transition-colors duration-500">
                   <SectionHeading label="Resume" />
 
                   <p className="text-text-secondary text-base sm:text-[17px]" style={{ lineHeight: '2.2', maxWidth: '600px', marginBottom: '4rem' }}>
@@ -576,18 +577,18 @@ export default function Home() {
                       href={settings.resume_pdf_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group relative inline-flex items-center bg-gradient-to-r from-accent to-accent-hover text-white text-base font-bold rounded-full transition-all duration-300 active:scale-[0.97] overflow-hidden"
-                      style={{ gap: '1rem', padding: '1.25rem 3.5rem', boxShadow: '0 20px 25px -5px rgba(220,38,38,0.25), 0 8px 10px -6px rgba(220,38,38,0.25)' }}
+                      className="group relative inline-flex items-center justify-center bg-gradient-to-r from-accent to-accent-hover text-white font-bold rounded-full transition-all duration-300 active:scale-[0.97] overflow-hidden max-w-full"
+                      style={{ gap: 'clamp(0.4rem, 1.5vw, 1rem)', padding: 'clamp(0.7rem, 2vw, 1.25rem) clamp(1rem, 3vw, 3.5rem)', boxShadow: '0 20px 25px -5px rgba(220,38,38,0.25), 0 8px 10px -6px rgba(220,38,38,0.25)' }}
                     >
                       <span className="absolute inset-0 rounded-full bg-white/0 group-hover:bg-white/5 transition-colors duration-300" />
-                      <svg className="w-5 h-5 relative z-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 relative z-10 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                         <polyline points="7 10 12 15 17 10"/>
                         <line x1="12" y1="15" x2="12" y2="3"/>
                       </svg>
-                      <span className="relative z-10">Download Resume</span>
-                      <span className="relative z-10 text-white/50 text-xs font-medium">PDF</span>
-                      <svg className="w-4 h-4 relative z-10 opacity-0 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" style={{ transform: 'translateX(-8px)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <span className="relative z-10 text-sm sm:text-base whitespace-nowrap">Download Resume</span>
+                      <span className="relative z-10 text-white/50 text-xs font-medium hidden sm:inline">PDF</span>
+                      <svg className="w-4 h-4 relative z-10 flex-shrink-0 opacity-0 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 hidden sm:block" style={{ transform: 'translateX(-8px)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <line x1="5" y1="12" x2="19" y2="12"/>
                         <polyline points="12 5 19 12 12 19"/>
                       </svg>
@@ -660,78 +661,6 @@ export default function Home() {
           </>
         )}
 
-        {activeTab === 'connect' && (
-          <div className="animate-fade-in-up">
-            <div style={{ padding: 'clamp(4rem, 6vw, 7rem)' }} className="bg-surface border border-accent-border rounded-2xl hover:border-accent/20 transition-colors duration-500">
-              <SectionHeading label="Connect" />
-
-              <p className="text-text-secondary text-base sm:text-[17px]" style={{ lineHeight: '2.2', maxWidth: '600px', marginBottom: '4rem' }}>
-                I'm always open to new opportunities, collaborations, or just a good conversation. 
-                Reach out through any of the platforms below.
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ maxWidth: '500px' }}>
-                {socials.length > 0 ? (
-                  socials.map((social) => (
-                    <a
-                      key={social.id}
-                      href={social.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group flex items-center gap-4 px-[25px] py-[21px] bg-surface-elevated border border-accent-border rounded-xl hover:border-accent/40 hover:bg-accent-dim transition-all duration-300"
-                    >
-                      <div className="flex-shrink-0 relative" style={{ width: '24px', height: '24px' }}>
-                        <SimpleIcon slug={social.icon_slug} className="w-6 h-6" label={social.platform} />
-                        <span className="absolute inset-0 items-center justify-center text-sm font-bold" style={{ display: 'none', color: '#DC2626' }}>
-                          {(social.platform || '?').charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <p className="text-sm font-semibold text-text-primary group-hover:text-accent transition-colors">
-                        {social.platform}
-                      </p>
-                      <svg className="w-4 h-4 ml-auto text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-                      </svg>
-                    </a>
-                  ))
-                ) : (
-                  <>
-                    <a
-                      href="https://github.com/nathan406"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group flex items-center gap-4 px-[25px] py-[21px] bg-surface-elevated border border-accent-border rounded-xl hover:border-accent/40 hover:bg-accent-dim transition-all duration-300"
-                    >
-                      <div className="flex-shrink-0 relative" style={{ width: '24px', height: '24px' }}>
-                        <SimpleIcon slug="github" className="w-6 h-6" label="GitHub" />
-                        <span className="absolute inset-0 items-center justify-center text-sm font-bold" style={{ display: 'none', color: '#DC2626' }}>G</span>
-                      </div>
-                      <p className="text-sm font-semibold text-text-primary group-hover:text-accent transition-colors">GitHub</p>
-                      <svg className="w-4 h-4 ml-auto text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-                      </svg>
-                    </a>
-                    <a
-                      href="https://linkedin.com/in/nathanmuyoba"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group flex items-center gap-4 px-[25px] py-[21px] bg-surface-elevated border border-accent-border rounded-xl hover:border-accent/40 hover:bg-accent-dim transition-all duration-300"
-                    >
-                      <div className="flex-shrink-0 relative" style={{ width: '24px', height: '24px' }}>
-                        <SimpleIcon slug="linkedin" className="w-6 h-6" label="LinkedIn" />
-                        <span className="absolute inset-0 items-center justify-center text-sm font-bold" style={{ display: 'none', color: '#DC2626' }}>L</span>
-                      </div>
-                      <p className="text-sm font-semibold text-text-primary group-hover:text-accent transition-colors">LinkedIn</p>
-                      <svg className="w-4 h-4 ml-auto text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-                      </svg>
-                    </a>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </section>
     </div>
   );

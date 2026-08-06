@@ -5,7 +5,6 @@ const TABS = [
   { id: 'about', label: 'About' },
   { id: 'experience', label: 'Experience' },
   { id: 'resume', label: 'Resume' },
-  { id: 'connect', label: 'Connect' },
 ] as const;
 
 export type TabId = (typeof TABS)[number]['id'];
@@ -18,7 +17,7 @@ export function ChannelNav({
   onTabChange: (tab: TabId) => void;
 }) {
   return (
-    <nav className="flex items-center gap-8 sm:gap-10 lg:gap-12">
+    <nav className="flex items-center gap-6 sm:gap-8 lg:gap-12 overflow-x-auto no-scrollbar">
       {TABS.map((tab) => {
         const isActive = activeTab === tab.id;
         return (
@@ -26,7 +25,7 @@ export function ChannelNav({
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
             className={`
-              relative py-4 text-sm sm:text-[15px] font-medium tracking-wide whitespace-nowrap
+              relative py-4 text-sm sm:text-[15px] font-medium tracking-wide whitespace-nowrap flex-shrink-0
               transition-all duration-300 ease-out
               ${isActive 
                 ? 'text-accent' 

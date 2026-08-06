@@ -24,6 +24,7 @@ html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip;
 }
 
 body {
@@ -75,6 +76,16 @@ body {
 
 .font-mono-custom {
   font-family: var(--font-jetbrains-mono), 'JetBrains Mono', monospace;
+}
+
+/* Hide scrollbars on horizontally scrollable elements (e.g. mobile tab bar) */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 /* Animations */
